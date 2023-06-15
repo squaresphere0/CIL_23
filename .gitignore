@@ -2,6 +2,7 @@
 *~
 tensorboard/
 ethz-cil-road-segmentation-2023.zip
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
