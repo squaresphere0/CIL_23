@@ -1,6 +1,7 @@
 # Our own custom ignores
-data/
 *~
+tensorboard/
+ethz-cil-road-segmentation-2023.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
