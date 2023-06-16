@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import torch
 from torch import nn
@@ -29,10 +30,10 @@ class ImageDataset(torch.utils.data.Dataset):
         if self.use_patches:  # split each image into patches
             self.x, self.y = utils.image_to_patches(self.x, self.y)
         elif self.resize_to != (self.x.shape[1], self.x.shape[2]):  # resize images
-            #self.x = np.stack([cv2.resize(img, dsize=self.resize_to) for img in self.x], 0)
-            #self.y = np.stack([cv2.resize(mask, dsize=self.resize_to) for mask in self.y], 0)
-            self.x = T.Resize(self.resize_to)(torch.from_numpy(self.x))
-            self.y = T.Resize(self.resize_to)(torch.from_numpy(self.y))
+            self.x = np.stack([cv2.resize(img, dsize=self.resize_to) for img in self.x], 0)
+            self.y = np.stack([cv2.resize(mask, dsize=self.resize_to) for mask in self.y], 0)
+            #self.x = T.Resize(self.resize_to)(torch.from_numpy(self.x))
+            #self.y = T.Resize(self.resize_to)(torch.from_numpy(self.y))
         self.x = np.moveaxis(self.x, -1, 1)  # pytorch works with CHW format instead of HWC
         self.n_samples = len(self.x)
 
