@@ -7,25 +7,33 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 
 class Block(nn.Module):
-
-    def __init__(self, in_ch, out_ch, kernel_size, self_referential):
+    """
+    This block consists of the following layers:
+        - masked convolution
+        - ReLu activation
+        - batch norm
+        - 1x1 convolution to out_ch number of channels
+    """
+    def __init__(self, in_ch, feat_ch, out_ch, kernel_size, self_referential):
         super().__init__()
-        self.conv = nn.Conv2d(in_channels=in_ch,
-                              out_channels=out_ch,
-                              kernel_size=kernel_size,
-                              padding=math.floor(kernel_size/2))
+        self.conv = nn.Conv2d(in_channels = in_ch,
+                              out_channels = feat_ch,
+                              kernel_size = kernel_size,
+                              padding = math.floor(kernel_size/2))
 
         self.block = nn.Sequential(nn.ReLU(),
                                    nn.BatchNorm2d(out_ch),
-                                   nn.Conv2d(in_channels = out_ch,
-                                             out_channels = in_ch,
+                                   nn.Conv2d(in_channels = feat_ch,
+                                             out_channels = out_ch,
                                              kernel_size = 1))
 
         with torch.no_grad():
+            # this is the middle row of the mask
             self.mask = torch.cat((torch.ones(1, math.floor(kernel_size/2)),
                                    torch.tensor([[self_referential]]),
                                    torch.zeros(1, math.floor(kernel_size/2))),
                                   1)
+            # all rows above should be 1 all below 0
             self.mask = torch.cat((torch.ones(math.floor(kernel_size/2),
                                               kernel_size),
                                    self.mask,
@@ -35,7 +43,7 @@ class Block(nn.Module):
     def forward(self, x):
         with torch.no_grad():
             self.conv.weight = nn.Parameter(self.conv.weight * self.mask)
-        return self.block(self.conv(x)) + x
+        return self.block(self.conv(x))
 
 
 class PixelCNN(nn.Module):
@@ -48,8 +56,8 @@ class PixelCNN(nn.Module):
                                          kernel_size = 1)
 
         self.layer_list = nn.ModuleList()
-        self.layer_list.append(Block(features, features, 7, False))
-        self.layer_list.extend([Block(features, features, kern, True) for
+        self.layer_list.append(Block(features, features, features, 7, False))
+        self.layer_list.extend([Block(features, features, features, kern, True) for
                                 kern in kernels])
 
         self.head = nn.Sequential(nn.Conv2d(in_channels = features,
@@ -102,7 +110,7 @@ def train(epochs, loader, model, optimizer, loss_function):
             optimizer.step()
 
             # Print intermediate outputs for debugging
-            if i % 100 == 0:
+            if i % 231 == 0:
                 print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
                     epoch + 1, epochs, i + 1, len(loader), loss.item()
                 ))
@@ -148,31 +156,8 @@ model = PixelCNN(20, 1, 1, [3])
 loss_function = nn.BCELoss()
 optimizer = torch.optim.Adam(model.parameters(),
                              lr = 1e-1)
-"""
+
+train(10, loader, model, optimizer, loss_function)
 torch.save({'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
            }, 'model/test.pt')
-"""
-snapshot = torch.load('model/test.pt')
-model.load_state_dict(snapshot['model_state_dict'])
-optimizer.load_state_dict(snapshot['optimizer_state_dict'])
-model.eval()
-
-visualize_images(
-    model.generate_samples(4, 28),
-    model.generate_samples(4, 28))
-
-"""
-with torch.no_grad():
-    images = [torch.ones(1,28,28)/2]
-    for x in range(28):
-        for y in range(28):
-            index = 28*x + y
-            prediction = torch.bernoulli(model(torch.stack([images[index]],0))[0,:,:,:])
-            one_pixel = images[index].clone()
-            one_pixel[0,x,y] = prediction[0,x,y]
-            images.append(one_pixel)
-
-    tens_img = torch.stack(images, 0)
-    visualize_images(tens_img[::56,:,:,:], tens_img[-5:-1,:,:,:])
-"""
