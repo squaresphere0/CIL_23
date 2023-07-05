@@ -2,6 +2,9 @@ import torch
 from torch import nn
 import utils
 import math
+from torchvision import datasets
+from torchvision import transforms
+import matplotlib.pyplot as plt
 
 class Block(nn.Module):
 
@@ -60,28 +63,26 @@ class PixelCNN(nn.Module):
             x = layer(x)
         return self.head(x)
 
+    def generate_samples(self, num, dim):
+        samples = [self.generate_sample(dim) for _ in range(num)]
+        return torch.stack(samples, 0)
 
-from torchvision import datasets
-from torchvision import transforms
-import matplotlib.pyplot as plt
+    def generate_sample(self, dim):
+        with torch.no_grad():
+            sample = torch.zeros(1,dim,dim)
+            for y in range(dim):
+                for x in range(dim):
+                    index = dim * y + x
+                    prediction = torch.bernoulli(
+                        self.forward(torch.stack([sample],0))[0,:,:,:]
+                        )
+                    sample[0,y,x] = prediction[0,y,x]
+            return sample
 
 
-mnist = datasets.MNIST(root = '../data/mnist',
-                       train = True,
-                       transform = transforms.ToTensor(),
-                       download = True)
 
-loader = torch.utils.data.DataLoader(dataset = mnist,
-                                     batch_size = 32,
-                                     shuffle = True)
 
-model = PixelCNN(20, 1, 1, [3])
-loss_function = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-1)
-
-def train():
-    epochs = 2
+def train(epochs, loader, model, optimizer, loss_function):
     outputs = []
     losses = []
     for epoch in range(epochs):
@@ -106,7 +107,7 @@ def train():
                     epoch + 1, epochs, i + 1, len(loader), loss.item()
                 ))
                 # Visualize example images and their reconstructed versions
-                visualize_images(image, reconstructed)
+                # visualize_images(image, reconstructed)
 
             # Storing the losses in a list for plotting
             losses.append(loss.detach())
@@ -134,4 +135,44 @@ def visualize_images(original, reconstructed):
     plt.show()
 
 
-train()
+mnist = datasets.MNIST(root = '../data/mnist',
+                       train = True,
+                       transform = transforms.ToTensor(),
+                       download = True)
+
+loader = torch.utils.data.DataLoader(dataset = mnist,
+                                     batch_size = 32,
+                                     shuffle = True)
+
+model = PixelCNN(20, 1, 1, [3])
+loss_function = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(),
+                             lr = 1e-1)
+"""
+torch.save({'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+           }, 'model/test.pt')
+"""
+snapshot = torch.load('model/test.pt')
+model.load_state_dict(snapshot['model_state_dict'])
+optimizer.load_state_dict(snapshot['optimizer_state_dict'])
+model.eval()
+
+visualize_images(
+    model.generate_samples(4, 28),
+    model.generate_samples(4, 28))
+
+"""
+with torch.no_grad():
+    images = [torch.ones(1,28,28)/2]
+    for x in range(28):
+        for y in range(28):
+            index = 28*x + y
+            prediction = torch.bernoulli(model(torch.stack([images[index]],0))[0,:,:,:])
+            one_pixel = images[index].clone()
+            one_pixel[0,x,y] = prediction[0,x,y]
+            images.append(one_pixel)
+
+    tens_img = torch.stack(images, 0)
+    visualize_images(tens_img[::56,:,:,:], tens_img[-5:-1,:,:,:])
+"""
