@@ -87,10 +87,55 @@ class PixelCNN(nn.Module):
                     sample[0,y,x] = prediction[0,y,x]
             return sample
 
+class conditionalPixelCNN(nn.Module):
+
+    def __init__(self, features, map_ch, cond_ch, kernels = (7, 5, 5, 3, 3)):
+        super().__init__()
+
+        self.map_ch = map_ch
+        self.cond_ch = cond_ch
+
+        self.conditional_tail = nn.Conv2d(cond_ch, features, kernels[0],
+                                          padding='same')
+        self.map_tail = Block(map_ch, features, features, kernels[0], False)
+
+        self.layer_list = nn.ModuleList()
+        self.layer_list.append(nn.Conv2d(2*features, features, 1))
+        self.layer_list.extend([Block(features, features*2, features, kern,
+                                      True) for kern in kernels[1:]])
+
+        self.head = nn.Sepuential(nn.Conv2d(features, map_ch, 1), nn.Sigmoid())
+
+
+    def forward(self, x):
+        in_map, conditional = torch.split(x, (self.map_ch, self.cond_ch), 1)
+
+        x = torch.cat((self.map_tail(in_map),
+                       self.conditional_tail(conditional)), 1)
+
+        for layer in self.layer_list:
+            x = layer(x)
+        return self.head(x)
+
+    def generate_samples(self, num, dim, conditional):
+        with torch.no_grad():
+            map_sample = torch.zeros(num, 1, dim, dim)
+
+            for y in range(dim):
+                for x in range(dim):
+                    index = dim * y + x
+                    prediction = torch.bernoulli( self.forward(
+                        torch.cat((map_sample, conditional), 1)))
+                    map_sample[:,:,y,x] = prediction[:,:,y,x]
+            return map_sample
+
+
+
 
 
 
 def train(epochs, loader, model, optimizer, loss_function):
+    model.train()
     outputs = []
     losses = []
     for epoch in range(epochs):
@@ -141,25 +186,3 @@ def visualize_images(original, reconstructed):
         axes[1, i].set_title("Reconstructed")
     plt.tight_layout()
     plt.show()
-
-
-mnist = datasets.MNIST(root = '../data/mnist',
-                       train = True,
-                       transform = transforms.ToTensor(),
-                       download = True)
-
-loader = torch.utils.data.DataLoader(dataset = mnist,
-                                     batch_size = 32,
-                                     shuffle = True)
-
-model = PixelCNN(20, 1, 1, [3])
-loss_function = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-1)
-
-
-"""
-torch.save({'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-           }, 'model/test.pt')
-           """
