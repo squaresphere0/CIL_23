@@ -157,7 +157,9 @@ loss_function = nn.BCELoss()
 optimizer = torch.optim.Adam(model.parameters(),
                              lr = 1e-1)
 
-train(10, loader, model, optimizer, loss_function)
+
+"""
 torch.save({'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
            }, 'model/test.pt')
+           """
