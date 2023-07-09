@@ -30,7 +30,7 @@ class Block(nn.Module):
                               padding = math.floor(kernel_size/2))
 
         self.block = nn.Sequential(nn.ReLU(),
-                                   nn.BatchNorm2d(feat_ch),
+#                                  nn.BatchNorm2d(feat_ch),
                                    nn.Conv2d(in_channels = feat_ch,
                                              out_channels = out_ch,
                                              kernel_size = 1))
@@ -145,7 +145,7 @@ class conditionalPixelCNN(nn.Module):
         self.layer_list.extend([Block(features, features*2, features, kern,
                                       True) for kern in kernels[1:]])
 
-        self.head = nn.Sepuential(nn.Conv2d(features, map_ch, 1), nn.Sigmoid())
+        self.head = nn.Sequential(nn.Conv2d(features, map_ch, 1), nn.Sigmoid())
 
 
     def forward(self, x):

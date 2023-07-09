@@ -1,22 +1,58 @@
 import torch
 from torch import nn
-import patch_cnn
-import image_dataset
-import training_loop
-from pathlib import Path
+from torch.utils.data import DataLoader
 
-BASE_PATH = Path('.')
+import matplotlib.pyplot as plt
+
+import pixel_cnn
+from pixel_cnn import conditionalPixelCNN
+from pixel_cnn import visualize_images
+import dataloader
+
+def shift_mask(mask):
+    return 2 * (mask - 0.5)
+
+def train(model, loader, optimizer, epochs):
+    model.train()
+    losses = []
+    for epoch in range(epochs):
+        for i, (image, mask) in enumerate(loader):
+
+            generated = model(torch.cat(
+                (shift_mask(mask), image), 1))
+
+            loss_function = nn.BCELoss()
+            loss = loss_function(generated, mask)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if i % 100 == 0:
+
+                print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
+                    epoch + 1, epochs, i + 1, len(loader), loss.item()
+                ))
+                #visualize_images(mask, generated)
+            losses.append(loss.detach())
 
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'  # automatically select device
-train_dataset = image_dataset.ImageDataset(BASE_PATH / 'data' / 'training',
-                                           device)
-val_dataset = image_dataset.ImageDataset(BASE_PATH / 'data' / 'validation', device)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=128, shuffle=True)
-model = patch_cnn.PatchCNN().to(device)
-loss_fn = nn.BCELoss()
-metric_fns = {'acc': patch_cnn.accuracy_fn}
+    # Defining the Plot Style
+    plt.style.use('fivethirtyeight')
+    plt.xlabel('Iterations')
+    plt.ylabel('Loss')
+
+    # Plotting the last 100 values
+    plt.plot(losses)
+    plt.show()
+
+
+original_dataset = dataloader.LazyImageDataset(
+    'Datasets/ethz-cil-road-segmentation-2023/metadata.csv')
+loader = DataLoader(original_dataset, 32, shuffle=True)
+
+model = conditionalPixelCNN(20,1,4)
+
 optimizer = torch.optim.Adam(model.parameters())
-n_epochs = 20
-training_loop.train(train_dataloader, val_dataloader, model, loss_fn, metric_fns, optimizer, n_epochs)
+
+train(model,loader,optimizer,2)
