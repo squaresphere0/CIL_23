@@ -137,7 +137,7 @@ class conditionalPixelCNN(nn.Module):
         self.cond_ch = cond_ch
 
         self.conditional_tail = nn.Conv2d(cond_ch, features, kernels[0],
-                                          padding='same')
+                                          padding=math.floor(kernels[0]/2))
         self.map_tail = Block(map_ch, features, features, kernels[0], False)
 
         self.layer_list = nn.ModuleList()

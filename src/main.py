@@ -36,15 +36,10 @@ def train(model, loader, optimizer, epochs):
                 #visualize_images(mask, generated)
             losses.append(loss.detach())
 
+    torch.save({'model_state_dict': model.state_dict(),
+                'loss_history': losses
+               }, 'model/7_9_cond.pt')
 
-    # Defining the Plot Style
-    plt.style.use('fivethirtyeight')
-    plt.xlabel('Iterations')
-    plt.ylabel('Loss')
-
-    # Plotting the last 100 values
-    plt.plot(losses)
-    plt.show()
 
 
 original_dataset = dataloader.LazyImageDataset(
@@ -55,4 +50,4 @@ model = conditionalPixelCNN(20,1,4)
 
 optimizer = torch.optim.Adam(model.parameters())
 
-train(model,loader,optimizer,2)
+train(model,loader,optimizer,20)
