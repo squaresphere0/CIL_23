@@ -71,28 +71,28 @@ class LazyImageDataset(Dataset):
         return image, mask
     
 
+def example():
+    # Usage example
+    csv_files = ["Datasets/" + i + "/metadata.csv" for i in['DeepGlobe', 'ethz-cil-road-segmentation-2023', 'massRD', 'Ottawa-Dataset']]
+    data_loaders = []
 
-# Usage example
-csv_files = ["Datasets/" + i + "/metadata.csv" for i in['DeepGlobe', 'ethz-cil-road-segmentation-2023', 'massRD', 'Ottawa-Dataset']]
-data_loaders = []
+    for csv_file in csv_files:
+        dataset = LazyImageDataset(csv_file)
+        data_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+        data_loaders.append(data_loader)
 
-for csv_file in csv_files:
-    dataset = LazyImageDataset(csv_file)
-    data_loader = DataLoader(dataset, batch_size=32, shuffle=True)
-    data_loaders.append(data_loader)
+    for data_loader in data_loaders:
+        i = 0
+        for images, masks in data_loader:
+            if i > 1 :
+                break
+            plt.imshow(images[0].permute(1, 2, 0))
+            plt.axis('off')
+            plt.show()
 
-for data_loader in data_loaders:
-    i = 0
-    for images, masks in data_loader:
-        if i > 1 :
-            break
-        plt.imshow(images[0].permute(1, 2, 0))
-        plt.axis('off')
-        plt.show()
-
-        plt.imshow(masks[0].permute(1, 2, 0))
-        plt.axis('off')
-        plt.show()
-        i = i + 1
-        # Process the batch of images and masks
-        # ...
+            plt.imshow(masks[0].permute(1, 2, 0))
+            plt.axis('off')
+            plt.show()
+            i = i + 1
+            # Process the batch of images and masks
+            # ...
