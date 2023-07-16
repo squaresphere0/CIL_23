@@ -6,6 +6,11 @@ from torchvision import datasets
 from torchvision import transforms
 import matplotlib.pyplot as plt
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu' 
+
+def shift_mask(mask):
+    return 2 * (mask - 0.5)
+
 class Block(nn.Module):
     """
     This block consists of the following layers:
@@ -47,7 +52,7 @@ class Block(nn.Module):
                                    self.mask,
                                    torch.zeros(math.floor(kernel_size/2),
                                                kernel_size)),
-                                  0)
+                                  0).to(device)
     def forward(self, x):
         '''
         The mask is multiplied with the weights of the convolution layer here
@@ -168,13 +173,13 @@ class conditionalPixelCNN(nn.Module):
         one hint image for every sample to be generated.
         '''
         with torch.no_grad():
-            map_sample = torch.zeros(num, 1, dim, dim)
-
+            map_sample = torch.zeros(num, 1, dim, dim).to(device)
             for y in range(dim):
                 for x in range(dim):
                     index = dim * y + x
                     prediction = torch.bernoulli( self.forward(
                         torch.cat((map_sample, conditional), 1)))
+                    prediction = shift_mask(prediction)
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 

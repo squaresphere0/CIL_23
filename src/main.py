@@ -9,6 +9,8 @@ from pixel_cnn import conditionalPixelCNN
 from pixel_cnn import visualize_images
 import dataloader
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu' 
+
 def shift_mask(mask):
     return 2 * (mask - 0.5)
 
@@ -17,7 +19,8 @@ def train(model, loader, optimizer, epochs):
     losses = []
     for epoch in range(epochs):
         for i, (image, mask) in enumerate(loader):
-
+            image = image.to(device)
+            mask = mask.to(device)
             generated = model(torch.cat(
                 (shift_mask(mask), image), 1))
 
