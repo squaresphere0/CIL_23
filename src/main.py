@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
 import matplotlib.pyplot as plt
 
@@ -39,18 +40,25 @@ def train(model, loader, optimizer, epochs):
                 #visualize_images(mask, generated)
             losses.append(loss.detach())
 
-    torch.save({'model_state_dict': model.state_dict(),
-                'loss_history': losses
-               }, 'model/7_9_cond.pt')
+    return losses
 
 
+
+transform = transforms.Compose([transforms.RandomResizedCrop((100,100)),
+                                 transforms.ToTensor()])
 
 original_dataset = dataloader.LazyImageDataset(
-    'Datasets/ethz-cil-road-segmentation-2023/metadata.csv')
+    'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
+    transform)
+
 loader = DataLoader(original_dataset, 32, shuffle=True)
 
-model = conditionalPixelCNN(20,1,4)
+model = conditionalPixelCNN(20,1,4, (7,5,5,3,3,3))
 
 optimizer = torch.optim.Adam(model.parameters())
 
-train(model,loader,optimizer,20)
+losses = train(model,loader,optimizer,200)
+
+torch.save({'model_state_dict': model.state_dict(),
+            'loss_history': losses
+           }, 'model/7_9_cond.pt')

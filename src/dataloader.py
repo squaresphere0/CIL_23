@@ -11,11 +11,11 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import ToTensor
 
 class LazyImageDataset(Dataset):
-    def __init__(self, csv_file):
+    def __init__(self, csv_file, transform = ToTensor(), size =(200,200)):
         self.csv_file = csv_file
         self.image_paths, self.mask_paths = self._read_csv()
-        self.transform = ToTensor()
-        self.resize = Resize((256, 256))  # Resize the images to a common size
+        self.transform = transform
+        self.resize = Resize(size)  # Resize the images to a common size
 
     def _read_csv(self):
         image_paths = []

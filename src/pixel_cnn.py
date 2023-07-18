@@ -135,15 +135,22 @@ class conditionalPixelCNN(nn.Module):
     concatenated and fed into a masked pipeline like in the PixelCNN.
     '''
 
-    def __init__(self, features, map_ch, cond_ch, kernels = (7, 5, 5, 3, 3)):
+    def __init__(self, features, map_ch, cond_ch, kernels = (7, 5, 5, 3, 3),
+                 noise = 0.0):
         super().__init__()
 
+        # Used to split the input into autoregressive and hint image
         self.map_ch = map_ch
         self.cond_ch = cond_ch
 
+        # Layers only to be applied to the hint image
         self.conditional_tail = nn.Conv2d(cond_ch, features, kernels[0],
                                           padding=math.floor(kernels[0]/2))
-        self.map_tail = Block(map_ch, features, features, kernels[0], False)
+
+        # Layers only to be applied to the autoregressive image
+        self.map_tail = nn.Sequential(
+            nn.Dropout(noise),
+            Block(map_ch, features, features, kernels[0], False))
 
         self.layer_list = nn.ModuleList()
         self.layer_list.append(nn.Conv2d(2*features, features, 1))
@@ -182,10 +189,6 @@ class conditionalPixelCNN(nn.Module):
                     prediction = shift_mask(prediction)
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
-
-
-
-
 
 
 def train(epochs, loader, model, optimizer, loss_function):
