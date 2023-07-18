@@ -190,6 +190,19 @@ class conditionalPixelCNN(nn.Module):
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 
+class multiResolutionPixelCNN(nn.Module):
+    '''
+    A class to leverage predictions at lower resolutions for higher resolutions
+    '''
+    def __init__(self, features, map_ch, cond_ch, kernels, noise):
+
+        self.models = nn.ModuleList()
+        self.model.append(conditionalPixelCNN(features, map_ch, cond_ch,
+                                              kenrels[0], noise))
+        for kernel_param in kernels[1:]:
+            self.models.append(conditionalPixelCNN(features, map_ch, cond_ch +
+                                                   1, kernel_param, noise))
+
 
 def train(epochs, loader, model, optimizer, loss_function):
     model.train()
@@ -231,6 +244,7 @@ def train(epochs, loader, model, optimizer, loss_function):
     # Plotting the last 100 values
     plt.plot(losses)
     plt.show()
+
 
 def visualize_images(original, reconstructed):
     fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(12, 6))
