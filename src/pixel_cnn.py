@@ -124,6 +124,49 @@ class PixelCNN(nn.Module):
                     sample[0,y,x] = prediction[0,y,x]
             return sample
 
+    @staticmethod
+    def training(epochs, loader, model, optimizer, loss_function):
+        model.train()
+        outputs = []
+        losses = []
+        for epoch in range(epochs):
+            print("Epoch: ", epoch)
+            for i, (image, _) in enumerate(loader):
+                # Output of Autoencoder
+                reconstructed = model(image)
+
+                # Calculating the loss function
+                loss = loss_function(reconstructed, image)
+
+                # The gradients are set to zero,
+                # the gradient is computed and stored.
+                # .step() performs parameter update
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Print intermediate outputs for debugging
+                if i % 231 == 0:
+                    print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
+                        epoch + 1, epochs, i + 1, len(loader), loss.item()
+                    ))
+                    # Visualize example images and their reconstructed versions
+                    # visualize_images(image, reconstructed)
+
+                # Storing the losses in a list for plotting
+                losses.append(loss.detach())
+            outputs.append((epochs, image, reconstructed))
+
+        # Defining the Plot Style
+        plt.style.use('fivethirtyeight')
+        plt.xlabel('Iterations')
+        plt.ylabel('Loss')
+
+        # Plotting the last 100 values
+        plt.plot(losses)
+        plt.show()
+
+
 class conditionalPixelCNN(nn.Module):
     '''
     Works similarly to PixelCNN but expects the input to be a concatenation of
@@ -190,6 +233,38 @@ class conditionalPixelCNN(nn.Module):
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 
+    @staticmethod
+    def training(model, loader, optimizer, epochs, name):
+        model.train()
+        losses = []
+        for epoch in range(epochs):
+            for i, (image, mask) in enumerate(loader):
+                image = image.to(device)
+                mask = mask.to(device)
+                generated = model(torch.cat(
+                    (shift_mask(mask), image), 1))
+
+                loss_function = nn.BCELoss()
+                loss = loss_function(generated, mask)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                if i % 100 == 0:
+
+                    print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
+                        epoch + 1, epochs, i + 1, len(loader), loss.item()
+                    ))
+                    #visualize_images(mask, generated)
+                losses.append(loss.detach())
+
+            torch.save({'model_state_dict': model.state_dict(),
+                        'loss_history': losses
+                       }, 'model/'+name+'.pt')
+
+        return losses
+
 class multiResolutionPixelCNN(nn.Module):
     '''
     A class to leverage predictions at lower resolutions for higher resolutions
@@ -204,46 +279,6 @@ class multiResolutionPixelCNN(nn.Module):
                                                    1, kernel_param, noise))
 
 
-def train(epochs, loader, model, optimizer, loss_function):
-    model.train()
-    outputs = []
-    losses = []
-    for epoch in range(epochs):
-        print("Epoch: ", epoch)
-        for i, (image, _) in enumerate(loader):
-            # Output of Autoencoder
-            reconstructed = model(image)
-
-            # Calculating the loss function
-            loss = loss_function(reconstructed, image)
-
-            # The gradients are set to zero,
-            # the gradient is computed and stored.
-            # .step() performs parameter update
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            # Print intermediate outputs for debugging
-            if i % 231 == 0:
-                print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
-                    epoch + 1, epochs, i + 1, len(loader), loss.item()
-                ))
-                # Visualize example images and their reconstructed versions
-                # visualize_images(image, reconstructed)
-
-            # Storing the losses in a list for plotting
-            losses.append(loss.detach())
-        outputs.append((epochs, image, reconstructed))
-
-    # Defining the Plot Style
-    plt.style.use('fivethirtyeight')
-    plt.xlabel('Iterations')
-    plt.ylabel('Loss')
-
-    # Plotting the last 100 values
-    plt.plot(losses)
-    plt.show()
 
 
 def visualize_images(original, reconstructed):
