@@ -187,8 +187,10 @@ class conditionalPixelCNN(nn.Module):
         self.cond_ch = cond_ch
 
         # Layers only to be applied to the hint image
-        self.conditional_tail = nn.Conv2d(cond_ch, features, kernels[0],
-                                          padding=math.floor(kernels[0]/2))
+        self.conditional_tail = nn.Sequential(
+            nn.Conv2d(cond_ch, features, kernels[0],
+                      padding=math.floor(kernels[0]/2)),
+            nn.ReLU())
 
         # Layers only to be applied to the autoregressive image
         self.map_tail = nn.Sequential(
@@ -196,11 +198,11 @@ class conditionalPixelCNN(nn.Module):
             Block(map_ch, features, features, kernels[0], False))
 
         self.layer_list = nn.ModuleList()
-        self.layer_list.append(nn.Conv2d(2*features, features, 1))
-        self.layer_list.extend([Block(features, features*2, features, kern,
+        self.layer_list.append(nn.Conv2d(2*features, 2*features, 1))
+        self.layer_list.extend([Block(2*features, features, 2*features, kern,
                                       True) for kern in kernels[1:]])
 
-        self.head = nn.Sequential(nn.Conv2d(features, map_ch, 1), nn.Sigmoid())
+        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1), nn.Sigmoid())
 
 
     def forward(self, x):
@@ -213,7 +215,8 @@ class conditionalPixelCNN(nn.Module):
                        self.conditional_tail(conditional)), 1)
 
         for layer in self.layer_list:
-            x = layer(x)
+            # For the layers past the first we can use residual layers
+            x = layer(x) + x
         return self.head(x)
 
     def generate_samples(self, num, dim, conditional):

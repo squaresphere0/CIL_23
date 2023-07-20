@@ -22,7 +22,7 @@ original_dataset = dataloader.LazyImageDataset(
 
 loader = DataLoader(original_dataset, 32, shuffle=True)
 
-model = conditionalPixelCNN(20,1,4, (7,5,5,3,3,3))
+model = conditionalPixelCNN(20,1,4, (7,5,5,3,3,3)).to(device).to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 
