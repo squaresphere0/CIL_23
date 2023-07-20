@@ -21,10 +21,10 @@ loader = DataLoader(original_dataset, 32, shuffle=True)
 
 layers = [7] + [3 for _ in range(15)]
 
-model = conditionalPixelCNN(20,1,4, layers, noise=0.5).to(device)
+model = conditionalPixelCNN(20,1,4, layers, noise=1).to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 
 losses = conditionalPixelCNN.training(model,loader,optimizer, 200,
-                                      'medium_noise_model')
+                                      'non_auto_regressive')
 

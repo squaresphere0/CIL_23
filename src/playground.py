@@ -30,3 +30,10 @@ for image, mask in DGloader:
     visualize_images(4, image, mask)
     break
 
+import torch
+from torch import nn
+m = nn.Dropout(p=1)
+in_tens = torch.randn(20, 16)
+output = m(in_tens)
+print(in_tens)
+print(output)
