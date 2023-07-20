@@ -8,14 +8,14 @@ from torchvision.transforms import ToTensor, Resize
 import csv
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, RandomResizedCrop,functional
 
 class LazyImageDataset(Dataset):
     def __init__(self, csv_file, transform = ToTensor(), size =(200,200)):
         self.csv_file = csv_file
         self.image_paths, self.mask_paths = self._read_csv()
         self.transform = transform
-        self.resize = Resize(size)  # Resize the images to a common size
+        self.resize = Resize(size) # Resize the images to a common size
 
     def _read_csv(self):
         image_paths = []
@@ -61,6 +61,12 @@ class LazyImageDataset(Dataset):
 
         image = Image.open(image_path)
         mask = Image.open(mask_path)
+
+        i, j, h, w = RandomResizedCrop.get_params(image,scale=(0.08, 1.0),
+                                                  ratio=(0.75,
+                                                         1.3333333333333333))
+        image = functional.crop(image, i, j, h, w)
+        mask = functional.crop(mask, i, j, h, w)
 
         image = self.resize(image)
         mask = self.resize(mask)

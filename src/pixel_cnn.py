@@ -38,7 +38,8 @@ class Block(nn.Module):
 #                                  nn.BatchNorm2d(feat_ch),
                                    nn.Conv2d(in_channels = feat_ch,
                                              out_channels = out_ch,
-                                             kernel_size = 1))
+                                             kernel_size = 1),
+                                  nn.ReLU())
 
         with torch.no_grad():
             # this is the middle row of the mask

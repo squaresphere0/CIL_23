@@ -13,18 +13,18 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu' 
 
 
-transform = transforms.Compose([transforms.RandomResizedCrop((100,100)),
-                                 transforms.ToTensor()])
-
 original_dataset = dataloader.LazyImageDataset(
     'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
-    transform)
+    size = (100,100))
 
 loader = DataLoader(original_dataset, 32, shuffle=True)
 
-model = conditionalPixelCNN(20,1,4, (7,5,5,3,3,3)).to(device).to(device)
+layers = [7] + [3 for _ in range(15)]
+
+model = conditionalPixelCNN(20,1,4, layers, noise=0.5).to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 
-losses = conditionalPixelCNN.training(model,loader,optimizer,2, 'test')
+losses = conditionalPixelCNN.training(model,loader,optimizer, 200,
+                                      'medium_noise_model')
 

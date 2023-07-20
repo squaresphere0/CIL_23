@@ -18,8 +18,11 @@ def visualize_images(num, original, reconstructed):
     plt.tight_layout()
     plt.show()
 
-deepglobe = LazyImageDataset('Datasets/massRD/metadata.csv')
-DGloader = DataLoader(deepglobe, 4, True)
+deepglobe = LazyImageDataset(
+    'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
+     size=(100,100))
+
+DGloader = DataLoader(deepglobe, 4, False)
 
 for image, mask in DGloader:
     print(image.shape)
