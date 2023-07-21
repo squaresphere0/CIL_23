@@ -261,7 +261,7 @@ class conditionalPixelCNN(nn.Module):
                         epoch + 1, epochs, i + 1, len(loader), loss.item()
                     ))
                     #visualize_images(mask, generated)
-                losses.append(loss.detach())
+                    losses.append(loss.detach())
 
             torch.save({'model_state_dict': model.state_dict(),
                         'loss_history': losses

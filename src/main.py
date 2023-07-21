@@ -26,22 +26,11 @@ model = conditionalPixelCNN(20,1,4, layers, noise=0.5).to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 
-medium_noise_model = torch.load('model/medium_noise_model.pt',
+medium_noise_model = torch.load('model/non_auto_regressive.pt',
                                 map_location=device)
 model.load_state_dict(medium_noise_model['model_state_dict'])
 
 
-for images, masks in loader:
-    model.eval()
-    empty_mask = torch.randn(4,1,100,100)
-    for i in range(50):
-        if i % 10 == 0: 
-            visualize_images(masks, empty_mask)
-        generated = model(torch.cat((empty_mask, images), 1))
-        empty_mask = (generated  -0.3)*0.5
-    break
-'''
-losses = conditionalpixelcnn.training(model,loader,optimizer, 2000,
-                                      'noise_0.5_epoch_2000')
-                                      '''
+losses = conditionalPixelCNN.training(model,loader,optimizer, 2,
+                                      'finetuned_2epochs')
 
