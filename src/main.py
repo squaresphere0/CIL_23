@@ -31,6 +31,6 @@ medium_noise_model = torch.load('model/non_auto_regressive.pt',
 model.load_state_dict(medium_noise_model['model_state_dict'])
 
 
-losses = conditionalPixelCNN.training(model,loader,optimizer, 2,
-                                      'finetuned_2epochs')
+losses = conditionalPixelCNN.training(model,loader,optimizer, 10,
+                                      'finetuned_10epochs')
 
