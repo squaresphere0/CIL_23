@@ -12,7 +12,7 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Load your saved model
-model = torch.load('model/almost_my_transformer.pt', map_location=torch.device('cpu'))
+model = torch.load('model/almost_my_transformer_with_proper_unet.pt', map_location=torch.device('cpu'))
 
 train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
 val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -35,24 +35,38 @@ with torch.no_grad():
         outputs = model(image)
 
         # Apply a threshold of 0.5: above -> 1, below -> 0
-        preds = outputs #(outputs > 0.5).float()
-        print(torch.nonzero(preds))
+        preds = outputs # (outputs > 0.5).float()
+        # print(torch.nonzero(preds))
         np_preds = np.squeeze(preds.numpy())
+        np_label = np.squeeze(label.numpy())
         np_image = np.transpose(np.squeeze(image.numpy()), (1, 2, 0))
+        print(np_image.shape)
 
-        preds = preds.view(-1)
+        # preds = preds.view(-1)
 
         y_true.extend(label.cpu().numpy())
         y_pred.extend(preds.cpu().numpy())
         print(label.shape, preds.shape)
         
-        plt.imshow(np_preds, cmap='gray')  # Choose appropriate colormap if your image is not grayscale
-        plt.axis('off')  # To not display axes
-        plt.savefig(f'preds/preds_{i}.png', bbox_inches='tight', pad_inches=0)
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
-        plt.imshow(np_image)  # Choose appropriate colormap if your image is not grayscale
-        plt.axis('off')  # To not display axes
-        plt.savefig(f'preds/origs_{i}.png', bbox_inches='tight', pad_inches=0)
+       # Display np_image1
+        axs[0].imshow(np_image, cmap='gray')
+        axs[0].axis('off')
+
+        # Display np_image2
+        axs[1].imshow(np_label, cmap='gray')
+        axs[1].axis('off')
+
+        # Display np_image3
+        axs[2].imshow(np_preds, cmap='gray')
+        axs[2].axis('off')
+        # Save the figure with both subplots
+        plt.subplots_adjust(wspace=0, hspace=0)
+        plt.tight_layout()
+        plt.savefig(f'preds/combined_{i}.png', bbox_inches='tight', pad_inches=0)
+        plt.close()
+
 
 # Compute F1 score
 f1 = f1_score(y_true, y_pred, average='binary')  # binary case

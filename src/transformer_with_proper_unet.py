@@ -23,52 +23,50 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class UnetDecoder(nn.Module):
-    def __init__(self, num_classes):
-        super(UnetDecoder, self).__init__()
+class Block(nn.Module):
+    """(Convolution => [BN] => ReLU) * 2"""
 
-        self.t_conv1 = nn.ConvTranspose2d(768, 384, 4, stride=2, padding=1)
-        self.t_conv2 = nn.ConvTranspose2d(384, 192, 4, stride=2, padding=1)
-        self.t_conv3 = nn.ConvTranspose2d(192, 96, 4, stride=2, padding=1)
-        self.t_conv4 = nn.ConvTranspose2d(96, 48, 4, stride=2, padding=1)
-        self.t_conv5 = nn.ConvTranspose2d(48, 24, 4, stride=2, padding=1)
-        self.conv = nn.Conv2d(24, num_classes, 1)
-
-        # New upsampling layer
-        self.upsample = nn.Upsample((224, 224), mode='bilinear', align_corners=True)
-
-    def forward(self, x):
-        x = F.relu(self.t_conv1(x))
-        x = F.relu(self.t_conv2(x))
-        x = F.relu(self.t_conv3(x))
-        x = F.relu(self.t_conv4(x))
-        x = F.relu(self.t_conv5(x))
-        x = self.conv(x)
-
-        # Upsample to match the target size
-        x = self.upsample(x)
-        
-        return x
-
-
-class ViTUNet(nn.Module):
-    def __init__(self, num_classes):
-        super(ViTUNet, self).__init__()
-        self.vit = timm.create_model('vit_huge_patch14_224', pretrained=True)
-        self.vit.head = nn.Identity()  # remove the classification head
-
-        self.decoder = UnetDecoder(num_classes)
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
 
     def forward(self, x):
-        vit_features = self.vit(x)  # (B, 768)
+        return self.double_conv(x)
 
-        # Reshape the output into a feature map
-        reshaped = vit_features.unsqueeze(-1).unsqueeze(-1)  # (B, 768, 1, 1)
 
-        # Pass the reshaped output through the decoder
-        out = self.decoder(reshaped)
+class UNet(nn.Module):
+    # UNet-like architecture for single class semantic segmentation.
+    def __init__(self, chs=(3,64,128,256,512,1024)):
+        super().__init__()
+        enc_chs = chs  # number of channels in the encoder
+        dec_chs = chs[::-1][:-1]  # number of channels in the decoder
+        self.enc_blocks = nn.ModuleList([Block(in_ch, out_ch) for in_ch, out_ch in zip(enc_chs[:-1], enc_chs[1:])])  # encoder blocks
+        self.pool = nn.MaxPool2d(2)  # pooling layer (can be reused as it will not be trained)
+        self.upconvs = nn.ModuleList([nn.ConvTranspose2d(in_ch, out_ch, 2, 2) for in_ch, out_ch in zip(dec_chs[:-1], dec_chs[1:])])  # deconvolution
+        self.dec_blocks = nn.ModuleList([Block(in_ch, out_ch) for in_ch, out_ch in zip(dec_chs[:-1], dec_chs[1:])])  # decoder blocks
+        self.head = nn.Sequential(nn.Conv2d(dec_chs[-1], 1, 1), nn.Sigmoid()) # 1x1 convolution for producing the output
 
-        return out
+    def forward(self, x):
+        # encode
+        enc_features = []
+        for block in self.enc_blocks[:-1]:
+            x = block(x)  # pass through the block
+            enc_features.append(x)  # save features for skip connections
+            x = self.pool(x)  # decrease resolution
+        x = self.enc_blocks[-1](x)
+        # decode
+        for block, upconv, feature in zip(self.dec_blocks, self.upconvs, enc_features[::-1]):
+            x = upconv(x)  # increase resolution
+            x = torch.cat([x, feature], dim=1)  # concatenate skip features
+            x = block(x)  # pass through the block
+        return self.head(x)  # reduce to 1 channel
 
 
 def load_all_from_path(path):
@@ -124,12 +122,10 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Create the model and move it to the GPU if available
-    model = ViTUNet(num_classes=1).to(device) #in_channels=3, out_channels=1, hidden_dim=768).to(device)# Freeze the vit parameters
-    for param in model.vit.parameters():
-        param.requires_grad = False
+    model = UNet().to(device)
 
     # Specify a loss function and an optimizer
-    loss_function = nn.BCEWithLogitsLoss()
+    loss_function = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters())
 
     # # # Suppose we have a dataloader that gives us batches of images and corresponding labels
@@ -149,7 +145,7 @@ if __name__ == '__main__':
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=32, shuffle=True)
 
-    num_epochs = 200
+    num_epochs = 35
 
     # original_dataset = dataloader.LazyImageDataset(
     #     'Datasets/ethz-cil-road-segmentation-2023/metadata.csv')
@@ -177,10 +173,12 @@ if __name__ == '__main__':
         model.train()  # Put the model in training mode
         running_loss = 0.0
         for i, (image, label) in enumerate(train_dataloader):
-            resize = transforms.Resize((224, 224))
+            # resize = transforms.Resize((224, 224))
+            # image = resize(image)
+            # label = resize(label)
 
-            image = resize(image).to(device)
-            label = resize(label).to(device)
+            image = image.to(device)
+            label = label.to(device)
             # Forward pass
             outputs = model(image)
             loss = loss_function(outputs, label)
@@ -214,4 +212,4 @@ if __name__ == '__main__':
 
         print(f'End of Epoch {epoch+1}/{num_epochs}') #, Validation F1: {val_f1}')
 
-    torch.save(model, 'model/almost_my_transformer.pt')
+    torch.save(model, 'model/almost_my_transformer_with_proper_unet.pt')
