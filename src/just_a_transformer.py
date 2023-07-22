@@ -117,6 +117,58 @@ class ImageDataset(torch.utils.data.Dataset):
         return self.n_samples
 
 
+def patch_accuracy_fn(y_hat, y):
+    # computes accuracy weighted by patches (metric used on Kaggle for evaluation)
+    h_patches = y.shape[-2] // PATCH_SIZE
+    w_patches = y.shape[-1] // PATCH_SIZE
+    patches_hat = y_hat.reshape(-1, 1, h_patches, PATCH_SIZE, w_patches, PATCH_SIZE).mean((-1, -3)) > CUTOFF
+    patches = y.reshape(-1, 1, h_patches, PATCH_SIZE, w_patches, PATCH_SIZE).mean((-1, -3)) > CUTOFF
+    return (patches == patches_hat).float().mean()
+
+
+def accuracy_fn(y_hat, y):
+    # computes classification accuracy
+    return (y_hat.round() == y.round()).float().mean()
+
+
+def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
+    """
+    Compute the Intersection over Union (IoU) loss.
+
+    Parameters:
+    pred (Tensor): the model's predictions
+    target (Tensor): the ground truth
+    smooth (float, optional): a smoothing factor to prevent division by zero
+    classes (str, optional): 'binary' for binary segmentation tasks, 'multi' for multi-class tasks
+
+    Returns:
+    IoU loss
+    """
+
+    # Reshape to ensure the prediction and target tensors are the same shape
+    pred = pred.view(-1)
+    target = target.view(-1)
+
+    # Compute the intersection
+    intersection = (pred * target).sum()
+
+    # Compute the union
+    if classes.lower() == 'binary':
+        # Binary segmentation -> union = pred + target - intersection
+        union = pred.sum() + target.sum() - intersection
+    elif classes.lower() == 'multi':
+        # Multi-class segmentation -> union = pred + target
+        union = pred.sum() + target.sum()
+    else:
+        raise ValueError(f"'classes' should be 'binary' or 'multi', got {classes}")
+
+    # Compute the IoU and the IoU loss
+    iou = (intersection + smooth) / (union + smooth)
+    iou_loss = 1 - iou
+
+    return iou_loss
+
+
 def main(args):
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -126,8 +178,17 @@ def main(args):
         model = PixelViT().to(device)
 
         # Specify a loss function and an optimizer
-        loss_function = nn.BCELoss()
+        metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
+
+        bce_loss_function = nn.BCELoss()
+        iou_loss_function = accuracy_fn  # This is the function I provided earlier
+
+        bce_weight = 0.8  # This determines how much the BCE loss contributes to the total loss
+        iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
+
         optimizer = torch.optim.Adam(model.parameters())
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
 
         # # # Suppose we have a dataloader that gives us batches of images and corresponding labels
         # # # For the sake of this example, we will create a simple random dataloader
@@ -143,20 +204,27 @@ def main(args):
         # loader = DataLoader(original_dataset, 32, shuffle=True)
         train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
         val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True)
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=4, shuffle=True)
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=2, shuffle=True)
+        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=2, shuffle=True)
 
-        num_epochs = 200
+        num_epochs = 1000
 
         for epoch in range(num_epochs):
             model.train()  # Put the model in training mode
             running_loss = 0.0
+            # scheduler.step()
             for i, (image, label) in enumerate(train_dataloader):
+                # resize = transforms.Resize((224, 224))
+                # image = resize(image)
+                # label = resize(label)
+
                 image = image.to(device)
                 label = label.to(device)
                 # Forward pass
                 outputs = model(image)
-                loss = loss_function(outputs, label)
+                bce_loss = bce_loss_function(outputs, label)
+                iou_loss = iou_loss_function(outputs, label)
+                loss = bce_weight * bce_loss + iou_weight * iou_loss
 
                 # Backward pass and optimization
                 optimizer.zero_grad()
@@ -164,9 +232,9 @@ def main(args):
                 optimizer.step()
 
                 running_loss += loss.item()
-            else:
-                print(f'Epoch {epoch+1}, Batch {i+1}, Average Loss: {running_loss / 50}')
-                running_loss = 0.0
+
+            print(f'Epoch {epoch + 1}, Batch {i + 1}, Average Loss: {running_loss / 50}')
+            running_loss = 0.0
 
             # # Evaluate on the validation set
             # model.eval()  # Put the model in evaluation mode
@@ -185,8 +253,9 @@ def main(args):
             #     # Compute the F1 score
             #     val_f1 = f1_score(val_labels, val_outputs.round())
 
-            print(f'End of Epoch {epoch+1}/{num_epochs}') #, Validation F1: {val_f1}')
-
+            print(f'End of Epoch {epoch + 1}/{num_epochs}') #, Validation F1: {val_f1}')
+            if epoch % 50 == 0:
+                torch.save(model, 'model/just_a_tranformer.pt')        
         torch.save(model, 'model/just_a_tranformer.pt')
     elif args['valid']:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -204,9 +273,9 @@ def main(args):
 
         with torch.no_grad():
             for i, (image, label) in enumerate(val_dataloader):
-                # resize = transforms.Resize((224, 224))
-                # image = resize(image)
-                # label = resize(label)
+                resize = transforms.Resize((224, 224))
+                image = resize(image)
+                label = resize(label)
 
                 image = image.to(device)
                 label = label.to(device)
