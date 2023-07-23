@@ -15,6 +15,9 @@ from io import BytesIO
 import requests
 import json
 
+from comet_ml import Experiment
+from comet_ml.integration.pytorch import log_model
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -225,196 +228,140 @@ def main(args):
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    if not args['valid']:
-        # Create the model and move it to the GPU if available
-        model = PixelSwinT().to(device)
+    experiment = Experiment(
+        api_key = "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
+        project_name = "cil-23",
+        workspace="mrpetrkol"
+    )
 
-        # Specify a loss function and an optimizer
-        metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
+    # Create the model and move it to the GPU if available
+    model = PixelSwinT().to(device)
 
-        # pos_weight = torch.ones([1, 1, 400, 400])*2.0
-        # pos_weight = pos_weight.to(device)
-        # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        bce_loss_function = nn.BCELoss()
-        iou_loss_function = accuracy_fn  # This is the function I provided earlier
+    # Specify a loss function and an optimizer
+    metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
-        bce_weight = 0.8  # This determines how much the BCE loss contributes to the total loss
-        iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
+    # pos_weight = torch.ones([1, 1, 400, 400])*2.0
+    # pos_weight = pos_weight.to(device)
+    # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    bce_loss_function = nn.BCELoss()
+    iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
-        optimizer = torch.optim.Adam(model.parameters())
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    bce_weight = 0.8  # This determines how much the BCE loss contributes to the total loss
+    iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
+    optimizer = torch.optim.Adam(model.parameters())
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-        # # # Suppose we have a dataloader that gives us batches of images and corresponding labels
-        # # # For the sake of this example, we will create a simple random dataloader
-        # # def random_dataloader(num_batches, batch_size, image_size=(3, 400, 400)):
-        # #     for _ in range(num_batches):
-        # #         images = torch.randn(batch_size, *image_size)
-        # #         labels = torch.randint(0, 2, (batch_size, 1)).float()
-        # #         yield images.to(device), labels.to(device)
+    my_batch_size = 4
+    train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
+    val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-        # # dataloader = random_dataloader(num_batches=1000, batch_size=32)
-        # original_dataset = dataloader.LazyImageDataset(
-        #     'Datasets/ethz-cil-road-segmentation-2023/metadata.csv')
-        # loader = DataLoader(original_dataset, 32, shuffle=True)
-        train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-        val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True)
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
+    num_epochs = 200
 
-        num_epochs = 200
+    send_message("Starting new computation.")
+    hyper_params = {
+        "learning_rate": 0.001,
+        "num_epochs": num_epochs,
+        "batch_size": my_batch_size,
+    }
+    experiment.log_parameters(hyper_params)
 
-        send_message("Starting new computation.")
+    for epoch in range(num_epochs):
+        model.train()  # Put the model in training mode
+        running_loss = 0.0
+        # scheduler.step()
+        for i, (image, label) in enumerate(train_dataloader):
+            # resize = transforms.Resize((224, 224))
+            # image = resize(image)
+            # label = resize(label)
 
-        for epoch in range(num_epochs):
-            model.train()  # Put the model in training mode
-            running_loss = 0.0
-            # scheduler.step()
-            for i, (image, label) in enumerate(train_dataloader):
-                # resize = transforms.Resize((224, 224))
-                # image = resize(image)
-                # label = resize(label)
+            image = image.to(device)
+            label = label.to(device)
+            # Forward pass
+            outputs = model(image)
+            bce_loss = bce_loss_function(outputs, label)
+            iou_loss = iou_loss_function(outputs, label)
+            loss = bce_weight * bce_loss + iou_weight * iou_loss
+            # Log train loss to Comet.ml
+            experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
-                image = image.to(device)
-                label = label.to(device)
-                # Forward pass
-                outputs = model(image)
-                bce_loss = bce_loss_function(outputs, label)
-                iou_loss = iou_loss_function(outputs, label)
-                loss = bce_weight * bce_loss + iou_weight * iou_loss
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                # Backward pass and optimization
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            running_loss += loss.item()
+        if epoch % 20 == 0:
+            torch.save(model, 'model/just_a_tranformer.pt')
+        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
+        print(msg)
 
-                running_loss += loss.item()
-            if epoch % 20 == 0:
-                torch.save(model, 'model/just_a_tranformer.pt')
-            msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
-            print(msg)
+        running_loss = 0.0
 
-            running_loss = 0.0
+        if epoch % 20 == 0 and epoch != 0:
+            send_message(msg)
+            # Evaluate on the validation set
+            print("Evaluating, plotting images.")
+            model.eval()  # Put the model in evaluation mode
+            with torch.no_grad():
+                for i, (image, label) in enumerate(val_dataloader):
+                    # resize = transforms.Resize((224, 224))
+                    # image = resize(image)
+                    # label = resize(label)
 
-            if epoch % 20 == 0 and epoch != 0:
-                send_message(msg)
-                # Evaluate on the validation set
-                print("Evaluating, plotting images.")
-                model.eval()  # Put the model in evaluation mode
-                with torch.no_grad():
-                    for i, (image, label) in enumerate(val_dataloader):
-                        # resize = transforms.Resize((224, 224))
-                        # image = resize(image)
-                        # label = resize(label)
+                    image = image.to(device)
+                    label = label.to(device)
 
-                        image = image.to(device)
-                        label = label.to(device)
+                    # image = image.to(device)
+                    # label = label.view(-1).to(device)
 
-                        # image = image.to(device)
-                        # label = label.view(-1).to(device)
+                    outputs = model(image)
 
-                        outputs = model(image)
+                    # Apply a threshold of 0.5: above -> 1, below -> 0
+                    preds = outputs # (outputs > 0.15).float()
+                    # print(torch.nonzero(preds))
+                    np_preds = np.squeeze(preds.cpu().numpy())
+                    np_label = np.squeeze(label.cpu().numpy())
+                    np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
+                    # print(np_image.shape)
 
-                        # Apply a threshold of 0.5: above -> 1, below -> 0
-                        preds = outputs # (outputs > 0.15).float()
-                        # print(torch.nonzero(preds))
-                        np_preds = np.squeeze(preds.cpu().numpy())
-                        np_label = np.squeeze(label.cpu().numpy())
-                        np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
-                        # print(np_image.shape)
+                    # preds = preds.view(-1)
 
-                        # preds = preds.view(-1)
+                    # y_true.extend(label.cpu().numpy())
+                    # y_pred.extend(preds.cpu().numpy())
+                    # print(label.shape, preds.shape)
 
-                        # y_true.extend(label.cpu().numpy())
-                        # y_pred.extend(preds.cpu().numpy())
-                        # print(label.shape, preds.shape)
+                    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
-                        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+                    # Display np_image1
+                    axs[0].imshow(np_image, cmap='gray')
+                    axs[0].axis('off')
 
-                        # Display np_image1
-                        axs[0].imshow(np_image, cmap='gray')
-                        axs[0].axis('off')
+                    # Display np_image2
+                    axs[1].imshow(np_label, cmap='gray')
+                    axs[1].axis('off')
 
-                        # Display np_image2
-                        axs[1].imshow(np_label, cmap='gray')
-                        axs[1].axis('off')
+                    # Display np_image3
+                    axs[2].imshow(np_preds, cmap='gray')
+                    axs[2].axis('off')
+                    # Save the figure with both subplots
+                    plt.subplots_adjust(wspace=0, hspace=0)
+                    plt.tight_layout()
+                    plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
+                    # Log to Comet
+                    experiment.log_figure(f'preds/combined_{i}_epoch_{epoch}.png', plt)
+                    plt.close()
 
-                        # Display np_image3
-                        axs[2].imshow(np_preds, cmap='gray')
-                        axs[2].axis('off')
-                        # Save the figure with both subplots
-                        plt.subplots_adjust(wspace=0, hspace=0)
-                        plt.tight_layout()
-                        plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
-                        plt.close()
+                    # Send an image
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png')
+                    buf.seek(0)
+                    send_photo(buf)
 
-                        # Send an image
-                        buf = BytesIO()
-                        plt.savefig(buf, format='png')
-                        buf.seek(0)
-                        send_photo(buf)
-
-        torch.save(model, 'model/just_a_tranformer.pt')
-    elif args['valid']:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-        # Load your saved model
-        model = torch.load('model/just_a_tranformer.pt', map_location=torch.device('cpu'))
-
-        train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-        val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True)
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True)
-
-        y_true = []
-        y_pred = []
-
-        with torch.no_grad():
-            for i, (image, label) in enumerate(val_dataloader):
-                resize = transforms.Resize((224, 224))
-                image = resize(image)
-                label = resize(label)
-
-                image = image.to(device)
-                label = label.to(device)
-
-                # image = image.to(device)
-                # label = label.view(-1).to(device)
-
-                outputs = model(image)
-
-                # Apply a threshold of 0.5: above -> 1, below -> 0
-                preds = outputs # (outputs > 0.15).float()
-                # print(torch.nonzero(preds))
-                np_preds = np.squeeze(preds.numpy())
-                np_label = np.squeeze(label.numpy())
-                np_image = np.transpose(np.squeeze(image.numpy()), (1, 2, 0))
-                print(np_image.shape)
-
-                # preds = preds.view(-1)
-
-                y_true.extend(label.cpu().numpy())
-                y_pred.extend(preds.cpu().numpy())
-                print(label.shape, preds.shape)
-                
-                fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-
-                # Display np_image1
-                axs[0].imshow(np_image, cmap='gray')
-                axs[0].axis('off')
-
-                # Display np_image2
-                axs[1].imshow(np_label, cmap='gray')
-                axs[1].axis('off')
-
-                # Display np_image3
-                axs[2].imshow(np_preds, cmap='gray')
-                axs[2].axis('off')
-                # Save the figure with both subplots
-                plt.subplots_adjust(wspace=0, hspace=0)
-                plt.tight_layout()
-                plt.savefig(f'preds/combined_{i}.png', bbox_inches='tight', pad_inches=0)
-                plt.close()
+    torch.save(model, 'model/just_a_tranformer.pt')
+    log_model(experiment, model, model_name='model/just_a_tranformer.pt')
 
 
 if __name__ == '__main__':
