@@ -62,7 +62,7 @@ class PixelSwinT(nn.Module):
 
         self.resize = Resize((384, 384))
 
-        self.dropout = nn.Dropout(p=0.5)
+        # self.dropout = nn.Dropout(p=0.5)
 
         self.reduce_channels = nn.Conv2d(1536, 1, kernel_size=1)
         
@@ -100,7 +100,7 @@ class PixelSwinT(nn.Module):
         x = self.resize(x)
         
         x = self.swin(x)
-        x = self.dropout(x)
+        # x = self.dropout(x)
 
         x = x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
         intermediate = self.reduce_channels(x)
@@ -280,10 +280,10 @@ def main(args):
     bce_loss_function = nn.BCELoss()
     iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
-    bce_weight = 0.8  # This determines how much the BCE loss contributes to the total loss
+    bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.001)
+    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.01)
     # Gather the rest of the model's parameters
     rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     optimizer_rest = torch.optim.Adam(rest_of_model_params, lr=0.001)
@@ -302,6 +302,8 @@ def main(args):
         # "weight_decay": optimizer.param_groups[0]['weight_decay'],
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
+        'bce_weight': bce_weight,
+        'iou_weight': iou_weight,
     }
     experiment.log_parameters(hyper_params)
     
@@ -346,7 +348,7 @@ def main(args):
 
             running_loss += loss.item()
 
-        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
+        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / len(train_dataloader)}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss, step=epoch)
         running_loss = 0.0
@@ -354,6 +356,7 @@ def main(args):
         # Save initial weights
         if epoch == 0:
             torch.save(model.swin.state_dict(), initial_weights_name)
+            experiment.log_asset(initial_weights_name)
 
         if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
             torch.save(model, 'model/just_a_tranformer.pt')
