@@ -270,7 +270,10 @@ def main(args):
     bce_weight = 0.8  # This determines how much the BCE loss contributes to the total loss
     iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.001)
+    # Gather the rest of the model's parameters
+    rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
+    optimizer_rest = torch.optim.Adam(rest_of_model_params, lr=0.001)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     my_batch_size = 4
@@ -282,8 +285,8 @@ def main(args):
     num_epochs = 100
 
     hyper_params = {
-        "learning_rate": optimizer.param_groups[0]['lr'],
-        "weight_decay": optimizer.param_groups[0]['weight_decay'],
+        # "learning_rate": optimizer.param_groups[0]['lr'],
+        # "weight_decay": optimizer.param_groups[0]['weight_decay'],
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
     }
@@ -321,9 +324,12 @@ def main(args):
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
             # Backward pass and optimization
-            optimizer.zero_grad()
+            optimizer_rest.zero_grad()
+            optimizer_upscale.zero_grad()
             loss.backward()
-            optimizer.step()
+            if epoch < 40:
+                optimizer_rest.step()
+            optimizer_upscale.step()
 
             running_loss += loss.item()
 
