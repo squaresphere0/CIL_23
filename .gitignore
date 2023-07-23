@@ -170,3 +170,5 @@ cython_debug/
 *out
 *model
 *preds
+temp_graph.svg
+temp_graph.png

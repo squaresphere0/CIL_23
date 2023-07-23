@@ -11,12 +11,19 @@ from glob import glob
 from random import sample
 from PIL import Image
 from io import BytesIO
-
-import requests
-import json
+import cairosvg
 
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
+
+import torchvision
+from torchview import draw_graph
+
+import tempfile
+import os
+
+import requests
+import json
 
 import torch
 import torch.nn as nn
@@ -224,6 +231,7 @@ def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
 
 def main(args):
     send_message("Loaded to the execution environment.")
+    log_custom_info_at_each_nth_epoch = 20
 
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -236,10 +244,6 @@ def main(args):
 
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
-    # Get model's architecture as a JSON string
-    model_graph = model.to_json()
-    # Log the model's architecture
-    experiment.set_model_graph(model_graph)
 
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
@@ -264,7 +268,6 @@ def main(args):
 
     num_epochs = 100
 
-    send_message("Starting new computation.")
     hyper_params = {
         "learning_rate": optimizer.param_groups[0]['lr'],
         "weight_decay": optimizer.param_groups[0]['weight_decay'],
@@ -272,7 +275,19 @@ def main(args):
         "batch_size": my_batch_size,
     }
     experiment.log_parameters(hyper_params)
+    
+    # Visualize the model
+    model_graph = draw_graph(model, input_size=(my_batch_size, 3, 400, 400), expand_nested=True)
+    # experiment.log_asset('model_graph.png')
+    # Create a temporary file
+    model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
+    cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
+    with open('temp_graph.png', 'rb') as f:
+        image_bytes = f.read()
+        experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
+        # experiment.set_model_graph(model_graph_json)
 
+    send_message("Starting new computation.")
     for epoch in range(num_epochs):
         model.train()  # Put the model in training mode
         running_loss = 0.0
@@ -298,14 +313,15 @@ def main(args):
             optimizer.step()
 
             running_loss += loss.item()
-        if epoch % 20 == 0:
-            torch.save(model, 'model/just_a_tranformer.pt')
+
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
         print(msg)
 
         running_loss = 0.0
 
-        if epoch % 20 == 0 and epoch != 0:
+        if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
+            torch.save(model, 'model/just_a_tranformer.pt')
+
             send_message(msg)
             # Evaluate on the validation set
             print("Evaluating, plotting images.")
