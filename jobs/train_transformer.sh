@@ -4,8 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --time=3:30:00
 #SBATCH --mem-per-cpu=32g
-#SBATCH --gpus=1
-#SBATCH --gres=gpumem:20g
+#SBATCH --gpus=a100-pcie-40gb:1
 
 #SBATCH --job-name=just_a_tr
 #SBATCH --output=./out/just_a_tr.out

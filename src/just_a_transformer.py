@@ -10,6 +10,10 @@ import matplotlib.pyplot as plt
 from glob import glob
 from random import sample
 from PIL import Image
+from io import BytesIO
+
+import requests
+import json
 
 import torch
 import torch.nn as nn
@@ -47,7 +51,30 @@ class PixelSwinT(nn.Module):
 
         self.resize = Resize((384, 384))
         
-        self.upsample = nn.Upsample(size=(400, 400), mode='bilinear', align_corners=False)
+        # self.upscale = nn.Sequential(
+        #     nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(768),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(384),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(192),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(96),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(48),
+        #     nn.ReLU(),
+
+        #     nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        # )
+        self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
         self.classifier = nn.Sequential(
             nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
@@ -63,7 +90,9 @@ class PixelSwinT(nn.Module):
         # x = self.reduce_dim(x)  # reduce dimensionality to 1
         # print(x.shape)
         # x = F.interpolate(x, size=(224, 224))
+        # print("SHape after swin:", x.shape)
 
+        # x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
         x = self.classifier(x)  # Classify each pixel
         return x
@@ -115,6 +144,27 @@ class ImageDataset(torch.utils.data.Dataset):
     
     def __len__(self):
         return self.n_samples
+
+
+def send_message(text):
+    url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendMessage"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        'chat_id': '502129529',
+        'text': text,
+    }
+
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+    # print(response.status_code, response.json())
+
+
+def send_photo(photo):
+    url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendPhoto"
+    files = {'photo': photo}
+    data = {
+        'chat_id': "502129529"
+    }
+    response = requests.post(url, files=files, data=data)
 
 
 def patch_accuracy_fn(y_hat, y):
@@ -170,6 +220,8 @@ def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
 
 
 def main(args):
+    send_message("Loaded to the execution environment.")
+
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -212,6 +264,8 @@ def main(args):
 
         num_epochs = 200
 
+        send_message("Starting new computation.")
+
         for epoch in range(num_epochs):
             model.train()  # Put the model in training mode
             running_loss = 0.0
@@ -237,10 +291,13 @@ def main(args):
                 running_loss += loss.item()
             if epoch % 20 == 0:
                 torch.save(model, 'model/just_a_tranformer.pt')
-            print(f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}')
+            msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
+            print(msg)
+
             running_loss = 0.0
 
             if epoch % 20 == 0 and epoch != 0:
+                send_message(msg)
                 # Evaluate on the validation set
                 print("Evaluating, plotting images.")
                 model.eval()  # Put the model in evaluation mode
@@ -290,6 +347,12 @@ def main(args):
                         plt.tight_layout()
                         plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
                         plt.close()
+
+                        # Send an image
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png')
+                        buf.seek(0)
+                        send_photo(buf)
 
         torch.save(model, 'model/just_a_tranformer.pt')
     elif args['valid']:
@@ -352,6 +415,7 @@ def main(args):
                 plt.tight_layout()
                 plt.savefig(f'preds/combined_{i}.png', bbox_inches='tight', pad_inches=0)
                 plt.close()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
