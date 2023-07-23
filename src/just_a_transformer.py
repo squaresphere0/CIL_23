@@ -90,11 +90,11 @@ class PixelSwinT(nn.Module):
             nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         )
         self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
-        self.classifier = nn.Sequential(
+        # self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
-            nn.BatchNorm2d(1),
-            nn.Sigmoid(),
-        )
+            # nn.BatchNorm2d(1),
+            # nn.Sigmoid(),
+        # )
 
     def forward(self, x):
         x = self.resize(x)
@@ -268,6 +268,7 @@ def main(args):
     model = PixelSwinT().to(device)
 
     initial_weights_name = 'model/initial_swin_weights.pth'
+    initial_weights = model.swin.state_dict()
     # if os.path.isfile(initial_weights_name):
     #     model.swin.load_state_dict(torch.load(initial_weights_name))
 
@@ -277,13 +278,13 @@ def main(args):
     # pos_weight = torch.ones([1, 1, 400, 400])*2.0
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    bce_loss_function = nn.BCELoss()
+    bce_loss_function = nn.BCEWithLogitsLoss()
     iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.01)
+    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.001)
     # Gather the rest of the model's parameters
     rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     optimizer_rest = torch.optim.Adam(rest_of_model_params, lr=0.001)
@@ -352,11 +353,6 @@ def main(args):
         print(msg)
         experiment.log_metric("epoch_loss", running_loss, step=epoch)
         running_loss = 0.0
-
-        # Save initial weights
-        if epoch == 0:
-            torch.save(model.swin.state_dict(), initial_weights_name)
-            experiment.log_asset(initial_weights_name)
 
         if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
             torch.save(model, 'model/just_a_tranformer.pt')
@@ -429,6 +425,8 @@ def main(args):
 
     torch.save(model, 'model/just_a_tranformer.pt')
     log_model(experiment, model, model_name='model/just_a_tranformer.pt')
+    torch.save(initial_weights, initial_weights_name)
+    experiment.log_asset(initial_weights_name)
 
 
 if __name__ == '__main__':
