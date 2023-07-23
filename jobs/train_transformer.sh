@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --time=3:30:00
 #SBATCH --mem-per-cpu=32g
-#SBATCH --gpus=rtx_3090:1
+#SBATCH --gpus=rtx_3090:1            # --gpus=rtx_3090:1 or --gpus=a100-pcie-40gb:1
 
 #SBATCH --job-name=just_a_tr
 #SBATCH --output=./out/just_a_tr.out
