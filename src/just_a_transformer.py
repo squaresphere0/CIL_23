@@ -34,36 +34,36 @@ import torch
 from torch import nn
 import timm
 from torchvision.transforms import Resize
+from efficientnet_pytorch import EfficientNet
 
-class PixelViT(nn.Module):
-    def __init__(self, vit_model_name='vit_base_patch8_224', patch_size=8):
+
+class PixelSwinT(nn.Module):
+    def __init__(self, swin_model_name='swin_large_patch4_window12_384'):
         super().__init__()
 
-        self.patch_size = patch_size
+        # Load the SWIN Transformer model, but remove the classification head
+        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0)
+        self.swin.head = nn.Identity()
 
-        # Load the ViT model, but remove the classification head
-        vit_model = timm.create_model(vit_model_name, pretrained=True, num_classes=0)
-        vit_model.head = nn.Identity()
-
-        self.resize = Resize((224, 224))
-        self.vit = vit_model
+        self.resize = Resize((384, 384))
         
-        self.upsample = nn.Upsample(size=(400, 400), mode='nearest')
+        self.upsample = nn.Upsample(size=(400, 400), mode='bilinear', align_corners=False)
         self.classifier = nn.Sequential(
-            nn.Conv2d(vit_model.embed_dim, 1, kernel_size=1),
+            nn.Conv2d(1536, 1, kernel_size=1),
+            nn.BatchNorm2d(1),
             nn.Sigmoid(),
         )
 
     def forward(self, x):
         x = self.resize(x)
         
-        # Make sure to extract all hidden states
-        features = self.vit.forward_features(x)
-        x = features[:, 1:]  # Exclude the CLS token
+        x = self.swin(x)
 
-        x = x.permute(0, 2, 1)  # Shape: (batch_size, embed_dim, seq_len)
-        seq_len = x.size(2)
-        x = x.view(x.size(0), x.size(1), int(np.sqrt(seq_len)), int(np.sqrt(seq_len)))  # Reshape to: (batch_size, embed_dim, height, width)
+        x = x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
+        # x = self.reduce_dim(x)  # reduce dimensionality to 1
+        # print(x.shape)
+        # x = F.interpolate(x, size=(224, 224))
+
         x = self.upsample(x)  # Upsample to the original image size
         x = self.classifier(x)  # Classify each pixel
         return x
@@ -175,11 +175,14 @@ def main(args):
 
     if not args['valid']:
         # Create the model and move it to the GPU if available
-        model = PixelViT().to(device)
+        model = PixelSwinT().to(device)
 
         # Specify a loss function and an optimizer
         metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
+        # pos_weight = torch.ones([1, 1, 400, 400])*2.0
+        # pos_weight = pos_weight.to(device)
+        # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         bce_loss_function = nn.BCELoss()
         iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
@@ -204,10 +207,10 @@ def main(args):
         # loader = DataLoader(original_dataset, 32, shuffle=True)
         train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
         val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=2, shuffle=True)
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=2, shuffle=True)
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True)
+        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-        num_epochs = 1000
+        num_epochs = 200
 
         for epoch in range(num_epochs):
             model.train()  # Put the model in training mode
@@ -232,30 +235,62 @@ def main(args):
                 optimizer.step()
 
                 running_loss += loss.item()
-
-            print(f'Epoch {epoch + 1}, Batch {i + 1}, Average Loss: {running_loss / 50}')
+            if epoch % 20 == 0:
+                torch.save(model, 'model/just_a_tranformer.pt')
+            print(f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}')
             running_loss = 0.0
 
-            # # Evaluate on the validation set
-            # model.eval()  # Put the model in evaluation mode
-            # with torch.no_grad():
-            #     val_labels = []
-            #     val_outputs = []
-            #     for images, labels in val_dataloader:
-            #         outputs = model(images)
-            #         val_labels.append(labels.cpu().numpy())
-            #         val_outputs.append(outputs.cpu().numpy())
+            if epoch % 20 == 0 and epoch != 0:
+                # Evaluate on the validation set
+                print("Evaluating, plotting images.")
+                model.eval()  # Put the model in evaluation mode
+                with torch.no_grad():
+                    for i, (image, label) in enumerate(val_dataloader):
+                        # resize = transforms.Resize((224, 224))
+                        # image = resize(image)
+                        # label = resize(label)
 
-            #     # Concatenate all the outputs and labels
-            #     val_labels = np.concatenate(val_labels)
-            #     val_outputs = np.concatenate(val_outputs)
+                        image = image.to(device)
+                        label = label.to(device)
 
-            #     # Compute the F1 score
-            #     val_f1 = f1_score(val_labels, val_outputs.round())
+                        # image = image.to(device)
+                        # label = label.view(-1).to(device)
 
-            print(f'End of Epoch {epoch + 1}/{num_epochs}') #, Validation F1: {val_f1}')
-            if epoch % 50 == 0:
-                torch.save(model, 'model/just_a_tranformer.pt')        
+                        outputs = model(image)
+
+                        # Apply a threshold of 0.5: above -> 1, below -> 0
+                        preds = outputs # (outputs > 0.15).float()
+                        # print(torch.nonzero(preds))
+                        np_preds = np.squeeze(preds.cpu().numpy())
+                        np_label = np.squeeze(label.cpu().numpy())
+                        np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
+                        # print(np_image.shape)
+
+                        # preds = preds.view(-1)
+
+                        # y_true.extend(label.cpu().numpy())
+                        # y_pred.extend(preds.cpu().numpy())
+                        # print(label.shape, preds.shape)
+
+                        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+
+                        # Display np_image1
+                        axs[0].imshow(np_image, cmap='gray')
+                        axs[0].axis('off')
+
+                        # Display np_image2
+                        axs[1].imshow(np_label, cmap='gray')
+                        axs[1].axis('off')
+
+                        # Display np_image3
+                        axs[2].imshow(np_preds, cmap='gray')
+                        axs[2].axis('off')
+                        # Save the figure with both subplots
+                        plt.subplots_adjust(wspace=0, hspace=0)
+                        plt.tight_layout()
+                        plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
+                        plt.close()
+
         torch.save(model, 'model/just_a_tranformer.pt')
     elif args['valid']:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -286,7 +321,7 @@ def main(args):
                 outputs = model(image)
 
                 # Apply a threshold of 0.5: above -> 1, below -> 0
-                preds = outputs # (outputs > 0.5).float()
+                preds = outputs # (outputs > 0.15).float()
                 # print(torch.nonzero(preds))
                 np_preds = np.squeeze(preds.numpy())
                 np_label = np.squeeze(label.numpy())
