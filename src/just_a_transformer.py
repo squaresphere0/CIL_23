@@ -236,6 +236,10 @@ def main(args):
 
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
+    # Get model's architecture as a JSON string
+    model_graph = model.to_json()
+    # Log the model's architecture
+    experiment.set_model_graph(model_graph)
 
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
@@ -258,11 +262,12 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-    num_epochs = 200
+    num_epochs = 100
 
     send_message("Starting new computation.")
     hyper_params = {
-        "learning_rate": 0.001,
+        "learning_rate": optimizer.param_groups[0]['lr'],
+        "weight_decay": optimizer.param_groups[0]['weight_decay'],
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
     }
