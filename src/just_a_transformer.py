@@ -373,7 +373,6 @@ def main(args):
                     plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
                     # Log to Comet
                     experiment.log_figure(f'preds/combined_{i}_epoch_{epoch}.png', plt)
-                    plt.close()
 
                     # Send an image
                     buf = BytesIO()
@@ -381,6 +380,7 @@ def main(args):
                     buf.seek(0)
                     send_photo(buf)
                     buf.close()
+                    plt.close()
 
     torch.save(model, 'model/just_a_tranformer.pt')
     log_model(experiment, model, model_name='model/just_a_tranformer.pt')
