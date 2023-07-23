@@ -61,6 +61,10 @@ class PixelSwinT(nn.Module):
         self.swin.head = nn.Identity()
 
         self.resize = Resize((384, 384))
+
+        self.dropout = nn.Dropout(p=0.5)
+
+        self.reduce_channels = nn.Conv2d(1536, 1, kernel_size=1)
         
         self.upscale = nn.Sequential(
             nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
@@ -96,8 +100,12 @@ class PixelSwinT(nn.Module):
         x = self.resize(x)
         
         x = self.swin(x)
+        x = self.dropout(x)
 
         x = x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
+        intermediate = self.reduce_channels(x)
+        intermediate = self.upsample(intermediate)
+        intermediate = self.classifier(intermediate)
         # x = self.reduce_dim(x)  # reduce dimensionality to 1
         # print(x.shape)
         # x = F.interpolate(x, size=(224, 224))
@@ -106,7 +114,7 @@ class PixelSwinT(nn.Module):
         x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
         x = self.classifier(x)  # Classify each pixel
-        return x
+        return x, intermediate
 
 
 def load_all_from_path(path):
@@ -173,7 +181,8 @@ def send_photo(photo):
     url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendPhoto"
     files = {'photo': photo}
     data = {
-        'chat_id': "502129529"
+        'chat_id': "502129529",
+        'disable_notification': True,
     }
     response = requests.post(url, files=files, data=data)
 
@@ -316,7 +325,7 @@ def main(args):
             image = image.to(device)
             label = label.to(device)
             # Forward pass
-            outputs = model(image)
+            outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
             iou_loss = iou_loss_function(outputs, label)
             loss = bce_weight * bce_loss + iou_weight * iou_loss
@@ -335,7 +344,7 @@ def main(args):
 
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / 50}'
         print(msg)
-
+        experiment.log_metric("epoch_loss", running_loss, step=epoch)
         running_loss = 0.0
 
         if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
@@ -357,14 +366,16 @@ def main(args):
                     # image = image.to(device)
                     # label = label.view(-1).to(device)
 
-                    outputs = model(image)
+                    outputs, intermediate = model(image)
 
                     # Apply a threshold of 0.5: above -> 1, below -> 0
                     preds = outputs # (outputs > 0.15).float()
+                    inter = intermediate
                     # print(torch.nonzero(preds))
                     np_preds = np.squeeze(preds.cpu().numpy())
                     np_label = np.squeeze(label.cpu().numpy())
                     np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
+                    np_inter = np.squeeze(inter.cpu().numpy())
                     # print(np_image.shape)
 
                     # preds = preds.view(-1)
@@ -373,7 +384,7 @@ def main(args):
                     # y_pred.extend(preds.cpu().numpy())
                     # print(label.shape, preds.shape)
 
-                    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+                    fig, axs = plt.subplots(1, 4, figsize=(20, 5))
 
                     # Display np_image1
                     axs[0].imshow(np_image, cmap='gray')
@@ -384,7 +395,11 @@ def main(args):
                     axs[1].axis('off')
 
                     # Display np_image3
-                    axs[2].imshow(np_preds, cmap='gray')
+                    axs[3].imshow(np_preds, cmap='gray')
+                    axs[3].axis('off')
+
+                    # Display np_image4
+                    axs[2].imshow(np_inter, cmap='gray')
                     axs[2].axis('off')
                     # Save the figure with both subplots
                     plt.subplots_adjust(wspace=0, hspace=0)
