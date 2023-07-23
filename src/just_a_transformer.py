@@ -364,6 +364,7 @@ def main(args):
                     plt.savefig(buf, format='png')
                     buf.seek(0)
                     send_photo(buf)
+                    buf.close()
 
     torch.save(model, 'model/just_a_tranformer.pt')
     log_model(experiment, model, model_name='model/just_a_tranformer.pt')
