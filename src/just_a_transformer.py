@@ -267,6 +267,10 @@ def main(args):
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
 
+    initial_weights_name = 'model/initial_swin_weights.pth'
+    # if os.path.isfile(initial_weights_name):
+    #     model.swin.load_state_dict(torch.load(initial_weights_name))
+
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
@@ -346,6 +350,10 @@ def main(args):
         print(msg)
         experiment.log_metric("epoch_loss", running_loss, step=epoch)
         running_loss = 0.0
+
+        # Save initial weights
+        if epoch == 0:
+            torch.save(model.swin.state_dict(), initial_weights_name)
 
         if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
             torch.save(model, 'model/just_a_tranformer.pt')
