@@ -105,7 +105,7 @@ class PixelSwinT(nn.Module):
         x = x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
         intermediate = self.reduce_channels(x)
         intermediate = self.upsample(intermediate)
-        intermediate = self.classifier(intermediate)
+        # intermediate = self.classifier(intermediate)
         # x = self.reduce_dim(x)  # reduce dimensionality to 1
         # print(x.shape)
         # x = F.interpolate(x, size=(224, 224))
@@ -113,7 +113,7 @@ class PixelSwinT(nn.Module):
 
         x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
-        x = self.classifier(x)  # Classify each pixel
+        # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
 
 
