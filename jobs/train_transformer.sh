@@ -4,13 +4,15 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --time=3:30:00
 #SBATCH --mem-per-cpu=32g
-#SBATCH --gpus=a100-pcie-40gb:1
+#SBATCH --gpus=rtx_3090:1
 
 #SBATCH --job-name=just_a_tr
 #SBATCH --output=./out/just_a_tr.out
 #SBATCH --error=./out/just_a_tr.err
 
 cd ..
+
+rm -rf preds/*
 
 export SETUPTOOLS_USE_DISTUTILS=stdlib
 
