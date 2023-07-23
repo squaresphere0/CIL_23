@@ -64,37 +64,39 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        self.reduce_channels = nn.Conv2d(1536, 1, kernel_size=1)
+        num_channels = 1536
+        self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
         
-        self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(768),
-            nn.ReLU(),
+        # self.upscale = nn.Identity()
+        # self.upscale = nn.Sequential(
+        #     nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 2),
+        #     nn.ReLU(),
 
-            nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(384),
-            nn.ReLU(),
+        #     nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 4),
+        #     nn.ReLU(),
 
-            nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(192),
-            nn.ReLU(),
+        #     nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 8),
+        #     nn.ReLU(),
 
-            nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(96),
-            nn.ReLU(),
+        #     nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 16),
+        #     nn.ReLU(),
 
-            nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(48),
-            nn.ReLU(),
+        #     nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 32),
+        #     nn.ReLU(),
 
-            nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
-        )
-        self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
-        # self.batchnorm = nn.Sequential(
-            # nn.Conv2d(1536, 1, kernel_size=1),
-            # nn.BatchNorm2d(1),
-            # nn.Sigmoid(),
+        #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         # )
+        self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
+        self.batchnorm = nn.Sequential(
+            # nn.Conv2d(1536, 1, kernel_size=1),
+            nn.BatchNorm2d(1),
+            # nn.Sigmoid(),
+        )
 
     def forward(self, x):
         x = self.resize(x)
@@ -111,8 +113,10 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        x = self.upscale(x)
+        # x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
+        x = self.reduce_channels(x)
+        x = self.batchnorm(x)
         # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
 
@@ -242,16 +246,16 @@ def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
 def main(args):
     send_message("Loaded to the execution environment.")
 
-    # Fix randomness
-    seed = 42
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    np.random.seed(seed)  # Numpy module.
-    random.seed(seed)  # Python random module.
-    torch.manual_seed(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
+    # # Fix randomness
+    # seed = 42
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    # np.random.seed(seed)  # Numpy module.
+    # random.seed(seed)  # Python random module.
+    # torch.manual_seed(seed)
+    # torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
 
     log_custom_info_at_each_nth_epoch = 20
 
@@ -284,10 +288,9 @@ def main(args):
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), lr=0.001)
-    # Gather the rest of the model's parameters
     rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
-    optimizer_rest = torch.optim.Adam(rest_of_model_params, lr=0.001)
+    optimizer_rest = torch.optim.Adam(rest_of_model_params)
+    # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     my_batch_size = 4
@@ -323,6 +326,7 @@ def main(args):
     for epoch in range(num_epochs):
         model.train()  # Put the model in training mode
         running_loss = 0.0
+        step_counter = 0
         # scheduler.step()
         for i, (image, label) in enumerate(train_dataloader):
             # resize = transforms.Resize((224, 224))
@@ -341,21 +345,23 @@ def main(args):
 
             # Backward pass and optimization
             optimizer_rest.zero_grad()
-            optimizer_upscale.zero_grad()
+            # optimizer_upscale.zero_grad()
             loss.backward()
-            if epoch < 40:
-                optimizer_rest.step()
-            optimizer_upscale.step()
+            # if epoch < 40:
+            optimizer_rest.step()
+            # optimizer_upscale.step()
 
             running_loss += loss.item()
+            step_counter += 1
 
-        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / len(train_dataloader)}'
+        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
         print(msg)
-        experiment.log_metric("epoch_loss", running_loss, step=epoch)
+        experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
         running_loss = 0.0
 
-        if epoch % log_custom_info_at_each_nth_epoch == 0 and epoch != 0:
-            torch.save(model, 'model/just_a_tranformer.pt')
+        if epoch % log_custom_info_at_each_nth_epoch == 0:
+            if epoch != 0:
+                torch.save(model, 'model/just_a_tranformer.pt')
 
             send_message(msg)
             # Evaluate on the validation set
