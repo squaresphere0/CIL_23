@@ -12,6 +12,7 @@ from random import sample
 from PIL import Image
 from io import BytesIO
 import cairosvg
+import random
 
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
@@ -61,32 +62,32 @@ class PixelSwinT(nn.Module):
 
         self.resize = Resize((384, 384))
         
-        # self.upscale = nn.Sequential(
-        #     nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(768),
-        #     nn.ReLU(),
+        self.upscale = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(768),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(384),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(384),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(192),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(192),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(96),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(96),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(48),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(48),
+            nn.ReLU(),
 
-        #     nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
-        # )
+            nn.Conv2d(in_channels=48, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        )
         self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
         self.classifier = nn.Sequential(
-            nn.Conv2d(1536, 1, kernel_size=1),
+            # nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Sigmoid(),
         )
@@ -102,7 +103,7 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        # x = self.upscale(x)
+        x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
         x = self.classifier(x)  # Classify each pixel
         return x
@@ -231,6 +232,18 @@ def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
 
 def main(args):
     send_message("Loaded to the execution environment.")
+
+    # Fix randomness
+    seed = 42
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    np.random.seed(seed)  # Numpy module.
+    random.seed(seed)  # Python random module.
+    torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
     log_custom_info_at_each_nth_epoch = 20
 
     # Check if CUDA is available and set the device accordingly
