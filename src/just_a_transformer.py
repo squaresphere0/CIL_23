@@ -120,7 +120,7 @@ class PixelSwinT(nn.Module):
             x = self.upsample(x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
-            return x
+            return x, intermediate
 
         x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
