@@ -231,8 +231,8 @@ class conditionalPixelCNN(nn.Module):
             for y in range(dim):
                 for x in range(dim):
                     index = dim * y + x
-                    prediction = torch.bernoulli( self.forward(
-                        torch.cat((map_sample, conditional), 1)))
+                    prediction = self.forward(
+                        torch.cat((map_sample, conditional), 1))
                     prediction = shift_mask(prediction)
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
