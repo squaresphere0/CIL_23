@@ -265,7 +265,7 @@ def main(args):
     # torch.backends.cudnn.benchmark = False
     # torch.backends.cudnn.deterministic = True
 
-    log_custom_info_at_each_nth_epoch = 20
+    log_custom_info_at_each_nth_epoch = 10
 
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -280,7 +280,8 @@ def main(args):
     model = PixelSwinT().to(device)
 
     initial_weights_name = 'model/initial_swin_weights.pth'
-    initial_weights = copy.deepcopy(model.swin.state_dict())
+    initial_weights = model.swin.state_dict()
+    torch.save(initial_weights, initial_weights_name)
     # if os.path.isfile(initial_weights_name):
     #     model.swin.load_state_dict(torch.load(initial_weights_name))
 
@@ -290,7 +291,7 @@ def main(args):
     # pos_weight = torch.ones([1, 1, 400, 400])*2.0
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([7.5]).to(device))
+    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
     iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
@@ -332,45 +333,8 @@ def main(args):
         # experiment.set_model_graph(model_graph_json)
 
     send_message("Starting new computation.")
+    msg = "First epoch."
     for epoch in range(num_epochs):
-        model.train()  # Put the model in training mode
-        running_loss = 0.0
-        step_counter = 0
-        # scheduler.step()
-        for i, (image, label) in enumerate(train_dataloader):
-            # resize = transforms.Resize((224, 224))
-            # image = resize(image)
-            # label = resize(label)
-
-            image = image.to(device)
-            label = label.to(device)
-            # Forward pass
-            outputs, intermediate = model(image)
-            bce_loss = bce_loss_function(outputs, label)
-            iou_loss = iou_loss_function(outputs, label)
-            loss = bce_weight * bce_loss + iou_weight * iou_loss
-            # Log train loss to Comet.ml
-            experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
-
-            # Backward pass and optimization
-            optimizer.zero_grad()
-            # optimizer_upscale.zero_grad()
-            loss.backward()
-            # if epoch < 40:
-            optimizer.step()
-            # optimizer_upscale.step()
-
-            running_loss += loss.item()
-            step_counter += 1
-
-        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
-        print(msg)
-        experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
-        running_loss = 0.0
-
-        if epoch % 50 == 0 and epoch != 0:
-            torch.save(model, f'model/just_a_tranformer_epoch_{epoch}.pt')
-
         if epoch % log_custom_info_at_each_nth_epoch == 0:
             send_message(msg)
             # Evaluate on the validation set
@@ -438,10 +402,49 @@ def main(args):
                     buf.close()
                     plt.close()
 
+        model.train()  # Put the model in training mode
+        running_loss = 0.0
+        step_counter = 0
+        model.current_epoch = epoch
+        # scheduler.step()
+        for i, (image, label) in enumerate(train_dataloader):
+            # resize = transforms.Resize((224, 224))
+            # image = resize(image)
+            # label = resize(label)
+
+            image = image.to(device)
+            label = label.to(device)
+            # Forward pass
+            outputs, intermediate = model(image)
+            bce_loss = bce_loss_function(outputs, label)
+            iou_loss = iou_loss_function(outputs, label)
+            loss = bce_weight * bce_loss + iou_weight * iou_loss
+            # Log train loss to Comet.ml
+            experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
+
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            # optimizer_upscale.zero_grad()
+            loss.backward()
+            # if epoch < 40:
+            optimizer.step()
+            # optimizer_upscale.step()
+
+            running_loss += loss.item()
+            step_counter += 1
+
+        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
+        print(msg)
+        experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
+        running_loss = 0.0
+
+        if epoch % 50 == 0 and epoch != 0:
+            torch.save(model, f'model/just_a_tranformer_epoch_{epoch}.pt')
+            experiment.log_asset(initial_weights_name)
+
     torch.save(model, 'model/just_a_tranformer.pt')
     log_model(experiment, model, model_name='model/just_a_tranformer.pt')
-    torch.save(initial_weights, initial_weights_name)
-    experiment.log_asset(initial_weights_name)
+    # experiment.log_asset(initial_weights_name)
 
 
 if __name__ == '__main__':
