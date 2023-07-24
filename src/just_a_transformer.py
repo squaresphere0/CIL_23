@@ -306,7 +306,7 @@ def main(args):
     bce_loss_function_after_20_epochs = nn.BCEWithLogitsLoss()
     extra_loss_function = DiceLoss()
 
-    bce_weight = 0.5  # This determines how much the BCE loss contributes to the total loss
+    bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
     optimizer = torch.optim.Adam(model.parameters())
