@@ -13,7 +13,7 @@ import dataloader
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu' 
 
-BATCHSIZE = 32
+BATCHSIZE = 4
 
 original_dataset = dataloader.LazyImageDataset(
     'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
@@ -23,7 +23,7 @@ loader = DataLoader(original_dataset, BATCHSIZE, shuffle=True)
 
 layers = [7] + [3 for _ in range(15)]
 
-model = conditionalPixelCNN(20,1,4, layers, noise=0.0).to(device)
+model = conditionalPixelCNN(20,1,4, layers, noise=0.8).to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 
@@ -37,7 +37,7 @@ down_sample = nn.AvgPool2d(4)
 with torch.no_grad():
     model.eval()
     for image, mask in loader:
-        bias_func = lambda a : 1 * ( a + 0.1)
+        bias_func = lambda a : a*0.9 + torch.randn(a.shape)*0.1
         pred = model.inference_by_iterative_refinement(bias_func, 10, BATCHSIZE, 100, image)
         #image.movedim(1,3)
         visualize_images(mask, pred)

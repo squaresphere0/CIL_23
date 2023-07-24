@@ -246,6 +246,7 @@ class conditionalPixelCNN(nn.Module):
         '''
         prediction = torch.randn(batchsize, self.map_ch, dim, dim)
 #        prediction = torch.zeros(batchsize, self.map_ch, dim, dim)   
+
         for _ in range(steps):
             prediction = bias(prediction)
             prediction = self(torch.cat((prediction, hint), 1))
