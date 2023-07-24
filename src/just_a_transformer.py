@@ -251,6 +251,17 @@ def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
     return iou_loss
 
 
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=1):
+        super().__init__()
+        self.smooth = smooth
+
+    def forward(self, preds, targets):
+        intersection = (preds * targets).sum()
+        dice_coeff = (2.*intersection + self.smooth)/(preds.sum() + targets.sum() + self.smooth)
+        return 1. - dice_coeff
+
+
 def main(args):
     send_message("Loaded to the execution environment.")
 
@@ -292,10 +303,10 @@ def main(args):
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
-    iou_loss_function = accuracy_fn  # This is the function I provided earlier
+    extra_loss_function = DiceLoss()
 
-    bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
-    iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
+    bce_weight = 0.5  # This determines how much the BCE loss contributes to the total loss
+    extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
     optimizer = torch.optim.Adam(model.parameters())
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
@@ -317,7 +328,7 @@ def main(args):
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
         'bce_weight': bce_weight,
-        'iou_weight': iou_weight,
+        'extra_weight': extra_weight,
     }
     experiment.log_parameters(hyper_params)
     
@@ -417,8 +428,8 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
-            iou_loss = iou_loss_function(outputs, label)
-            loss = bce_weight * bce_loss + iou_weight * iou_loss
+            extra_loss = extra_loss_function(outputs, label)
+            loss = bce_weight * bce_loss + extra_weight * extra_loss
             # Log train loss to Comet.ml
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
