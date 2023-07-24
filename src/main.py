@@ -45,4 +45,4 @@ print(avg)
 '''
 
 losses = conditionalPixelCNN.training(model,loader,optimizer, 200,
-                                      'gaussian_noisei_03', noise=0.3)
+                                      'gaussian_noise_03', noise=0.3)
