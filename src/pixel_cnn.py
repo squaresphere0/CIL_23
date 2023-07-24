@@ -203,7 +203,7 @@ class conditionalPixelCNN(nn.Module):
         self.layer_list.extend([Block(2*features, features, 2*features, kern,
                                       True) for kern in kernels[1:]])
 
-        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1), nn.Sigmoid())
+        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1))
 
 
     def forward(self, x):
@@ -264,12 +264,13 @@ class conditionalPixelCNN(nn.Module):
             for i, (image, mask) in enumerate(loader):
                 image = image.to(device)
                 mask = mask.to(device)
-                mask = (1-noise) * shift_mask(mask)
-                mask += noise * torch.randn(mask.shape).to(device)
+                noisy_mask = (1-noise) * shift_mask(mask)
+                noisy_mask += noise * torch.randn(mask.shape).to(device)
                 generated = model(torch.cat(
-                    (mask, image), 1))
+                    (noisy_mask, image), 1))
 
-                loss_function = nn.BCELoss()
+                loss_function = nn.BCEWithLogitsLoss(pos_weight =
+                                                     torch.tensor(5))
                 loss = loss_function(generated, mask)
 
                 optimizer.zero_grad()
