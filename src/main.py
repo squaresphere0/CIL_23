@@ -1,13 +1,13 @@
 import comet_ml
-import cairosvg
+# import cairosvg
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-import torchvision
-from torchview import draw_graph
+# import torchvision
+# from torchview import draw_graph
 
 import matplotlib.pyplot as plt
 
@@ -58,13 +58,13 @@ print(avg)
 
 '''
 
-model_graph = draw_graph(model, input_size=(BATCHSIZE, 3, 100, 100), expand_nested=True)
-model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
-cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
-with open('temp_graph.png', 'rb') as f:
-    image_bytes = f.read()
-    comet_experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
-    # experiment.set_model_graph(model_graph_json)
+# # Plot model graph.
+# model_graph = draw_graph(model, input_size=(BATCHSIZE, 3, 100, 100), expand_nested=True)
+# model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
+# cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
+# with open('temp_graph.png', 'rb') as f:
+#     image_bytes = f.read()
+#     comet_experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
 
 losses = conditionalPixelCNN.training(model,loader,optimizer, 200,
                                       'gaussian_noise_03', noise=0.3, experiment=comet_experiment)
