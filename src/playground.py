@@ -18,22 +18,21 @@ def visualize_images(num, original, reconstructed):
     plt.tight_layout()
     plt.show()
 
-deepglobe = LazyImageDataset(
-    'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
-     size=(100,100))
+def test_dataloader():
+    deepglobe = LazyImageDataset(
+        'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
+         size=(100,100))
 
-DGloader = DataLoader(deepglobe, 4, False)
+    DGloader = DataLoader(deepglobe, 4, False)
 
-for image, mask in DGloader:
-    print(image.shape)
-    print(mask.shape)
-    visualize_images(4, image, mask)
-    break
+    for image, mask in DGloader:
+        print(image.shape)
+        print(mask.shape)
+        visualize_images(4, image, mask)
+        break
 
 import torch
-from torch import nn
-m = nn.Dropout(p=1)
-in_tens = torch.randn(20, 16)
-output = m(in_tens)
-print(in_tens)
-print(output)
+
+x = torch.sigmoid(torch.rand(10,10)*10)
+print(x)
+

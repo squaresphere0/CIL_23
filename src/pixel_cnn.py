@@ -237,6 +237,23 @@ class conditionalPixelCNN(nn.Module):
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 
+    def inference_by_iterative_refinement(self, bias, steps, batchsize, dim, hint):
+        '''
+        This method uses iterative refinement by feeding a random noise initial
+        guess through the model repeatedly instead of predicting pixels one by
+        one. This is considerably faster than "proper" prediction pixel by
+        pixel.
+        '''
+        prediction = torch.randn(batchsize, self.map_ch, dim, dim)
+        for _ in range(steps):
+            prediction = prediction * bias
+            prediction = self(torch.cat((prediction, hint), 1))
+            prediction = shift_mask(prediction)
+        # we need to shift the output back to the range (0,1)
+        return prediction/2 + 0.5
+
+
+
     @staticmethod
     def training(model, loader, optimizer, epochs, name):
         model.train()
@@ -268,20 +285,6 @@ class conditionalPixelCNN(nn.Module):
                        }, 'model/'+name+'.pt')
 
         return losses
-
-class multiResolutionPixelCNN(nn.Module):
-    '''
-    A class to leverage predictions at lower resolutions for higher resolutions
-    '''
-    def __init__(self, features, map_ch, cond_ch, kernels, noise):
-
-        self.models = nn.ModuleList()
-        self.model.append(conditionalPixelCNN(features, map_ch, cond_ch,
-                                              kenrels[0], noise))
-        for kernel_param in kernels[1:]:
-            self.models.append(conditionalPixelCNN(features, map_ch, cond_ch +
-                                                   1, kernel_param, noise))
-
 
 
 
