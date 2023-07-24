@@ -71,29 +71,65 @@ class PixelSwinT(nn.Module):
         num_channels = 1536
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
-        self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 2),
+        self.up0 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(768),
             nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 4),
-            nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 8),
-            nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 16),
-            nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 32),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         )
+        self.up1 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(768),
+            nn.ReLU(),
+        )
+        self.up2 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=1152, out_channels=576, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(576),
+            nn.ReLU(),
+        )
+        self.not_up3 = nn.Sequential(
+            nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(768),
+            nn.ReLU(),
+        )
+        self.up4 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(192),
+            nn.ReLU(),
+        )
+        self.up5 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=384, out_channels=1, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(1),
+            nn.ReLU(),
+        )
+        # self.not_up6 = nn.Sequential(
+        #     nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
+        #     nn.BatchNorm2d(768),
+        #     nn.ReLU(),
+        # )
+
+        # self.upscale = nn.Sequential(
+        #     nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 2),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 4),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 8),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 16),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 32),
+        #     nn.ReLU(),
+
+        #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        # )
         self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
@@ -102,13 +138,29 @@ class PixelSwinT(nn.Module):
         )
 
     def forward(self, x):
-        x = self.resize(x)
-        
-        x = self.swin(x)
-        # x = self.dropout(x)
+        # stage1 = self.swin.layers[0](x)
+        # print(f'stage1.shape: {stage1.shape}')
 
-        x = x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
-        intermediate = self.reduce_channels(x)
+
+        x = self.resize(x)
+
+        embed = self.swin.patch_embed(x)
+        stage0 = self.swin.layers[0](embed)
+        stage1 = self.swin.layers[1](stage0)
+        stage2 = self.swin.layers[2](stage1)
+        stage3 = self.swin.layers[3](stage2)
+
+        up0 = self.up0(stage3.permute(0, 3, 1, 2))        
+        up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
+        up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
+        not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+        up4 = self.up4(not_up3)
+        up5 = self.up5(up4)
+
+
+        swin_x = self.swin(x)
+        swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
+        intermediate = self.reduce_channels(swin_x)
         intermediate = self.upsample(intermediate)
         # intermediate = self.classifier(intermediate)
         # x = self.reduce_dim(x)  # reduce dimensionality to 1
@@ -117,13 +169,12 @@ class PixelSwinT(nn.Module):
         # print("SHape after swin:", x.shape)
 
         if self.current_epoch <= 20:
-            x = self.upsample(x)
+            x = self.upsample(swin_x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
             return x, intermediate
 
-        x = self.upscale(x)
-        x = self.upsample(x)  # Upsample to the original image size
+        x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
         # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
@@ -263,7 +314,7 @@ class DiceLoss(nn.Module):
 
 
 def main(args):
-    send_message("Loaded to the execution environment.")
+    # send_message("Loaded to the execution environment.")
 
     # Fix randomness
     seed = 42
@@ -282,13 +333,15 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     experiment = Experiment(
-        api_key = "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
+        api_key = "1" + "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
         project_name = "cil-23",
         workspace="mrpetrkol"
     )
 
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
+    with open('f.txt', 'w') as f:
+        f.write(str(model))
 
     initial_weights_name = 'model/initial_swin_weights.pth'
     initial_weights = model.swin.state_dict()
@@ -315,7 +368,7 @@ def main(args):
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-    my_batch_size = 4
+    my_batch_size = 1
     train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
