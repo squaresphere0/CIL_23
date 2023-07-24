@@ -282,7 +282,7 @@ def main(args):
     # pos_weight = torch.ones([1, 1, 400, 400])*2.0
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    bce_loss_function = nn.BCEWithLogitsLoss()
+    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([7.5]).to(device))
     iou_loss_function = accuracy_fn  # This is the function I provided earlier
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
