@@ -256,15 +256,17 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name, noise):
+    def training(model, loader, optimizer, epochs, name, noise = 0.0):
         model.train()
         losses = []
         for epoch in range(epochs):
             for i, (image, mask) in enumerate(loader):
                 image = image.to(device)
                 mask = mask.to(device)
+                mask = (1-noise) * shift_mask(mask)
+                mask += noise * torch.randn(mask.shape).to(device)
                 generated = model(torch.cat(
-                    (shift_mask(mask), image), 1))
+                    (mask, image), 1))
 
                 loss_function = nn.BCELoss()
                 loss = loss_function(generated, mask)
