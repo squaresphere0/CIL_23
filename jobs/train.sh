@@ -1,7 +1,9 @@
 #!/bin/bash
 
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=8
 #SBATCH --time=3:30:00
+#SBATCH --mem-per-cpu=32g
 
 #SBATCH --job-name=pixel_cnn
 #SBATCH --output=./out/pixel_cnn.out

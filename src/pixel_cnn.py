@@ -203,7 +203,7 @@ class conditionalPixelCNN(nn.Module):
         self.layer_list.extend([Block(2*features, features, 2*features, kern,
                                       True) for kern in kernels[1:]])
 
-        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1), nn.Sigmoid())
+        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1))
 
 
     def forward(self, x):
@@ -246,6 +246,7 @@ class conditionalPixelCNN(nn.Module):
         '''
         prediction = torch.randn(batchsize, self.map_ch, dim, dim)
 #        prediction = torch.zeros(batchsize, self.map_ch, dim, dim)   
+
         for _ in range(steps):
             prediction = bias(prediction)
             prediction = self(torch.cat((prediction, hint), 1))
@@ -256,7 +257,7 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name, noise, experiment=None):
+    def training(model, loader, optimizer, epochs, name, noise=0.0, experiment=None):
         hyper_params = {
             'num_epochs': epochs,
             'batch_size': loader.batch_size,
@@ -264,17 +265,20 @@ class conditionalPixelCNN(nn.Module):
             'my_parameter': 42,
         }
         experiment.log_parameters(hyper_params)
-        
+
         model.train()
         losses = []
         for epoch in range(epochs):
             for i, (image, mask) in enumerate(loader):
                 image = image.to(device)
                 mask = mask.to(device)
+                noisy_mask = (1-noise) * shift_mask(mask)
+                noisy_mask += noise * torch.randn(mask.shape).to(device)
                 generated = model(torch.cat(
-                    (shift_mask(mask), image), 1))
+                    (noisy_mask, image), 1))
 
-                loss_function = nn.BCELoss()
+                loss_function = nn.BCEWithLogitsLoss(pos_weight =
+                                                     torch.tensor(5))
                 loss = loss_function(generated, mask)
 
                 optimizer.zero_grad()
