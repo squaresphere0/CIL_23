@@ -256,7 +256,15 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name, noise):
+    def training(model, loader, optimizer, epochs, name, noise, experiment=None):
+        hyper_params = {
+            'num_epochs': epochs,
+            'batch_size': loader.batch_size,
+            'noise': noise,
+            'my_parameter': 42,
+        }
+        experiment.log_parameters(hyper_params)
+        
         model.train()
         losses = []
         for epoch in range(epochs):
@@ -273,17 +281,21 @@ class conditionalPixelCNN(nn.Module):
                 loss.backward()
                 optimizer.step()
 
+                experiment.log_metric("train_loss", loss.item(), step=epoch * len(loader) + i)
                 if i % 100 == 0:
 
                     print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
                         epoch + 1, epochs, i + 1, len(loader), loss.item()
                     ))
+
                     #visualize_images(mask, generated)
                     losses.append(loss.detach())
 
             torch.save({'model_state_dict': model.state_dict(),
 #                        'loss_history': losses
                        }, 'model/'+name+'.pt')
+            # Save the model to CometML
+            experiment.log_asset('model/'+name+'.pt')
 
         return losses
 
