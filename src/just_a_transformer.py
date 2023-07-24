@@ -368,10 +368,10 @@ def main(args):
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
         running_loss = 0.0
 
-        if epoch % log_custom_info_at_each_nth_epoch == 0:
-            if epoch != 0:
-                torch.save(model, 'model/just_a_tranformer.pt')
+        if epoch % 50 == 0 and epoch != 0:
+            torch.save(model, f'model/just_a_tranformer_epoch_{epoch}.pt')
 
+        if epoch % log_custom_info_at_each_nth_epoch == 0:
             send_message(msg)
             # Evaluate on the validation set
             print("Evaluating, plotting images.")
