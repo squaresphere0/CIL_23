@@ -303,6 +303,7 @@ def main(args):
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
+    bce_loss_function_after_20_epochs = nn.BCEWithLogitsLoss()
     extra_loss_function = DiceLoss()
 
     bce_weight = 0.5  # This determines how much the BCE loss contributes to the total loss
@@ -428,6 +429,8 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
+            if epoch > 20:
+                bce_loss = bce_loss_function_after_20_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
             # Log train loss to Comet.ml
