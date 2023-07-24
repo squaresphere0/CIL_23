@@ -50,11 +50,11 @@ import torch
 from torch import nn
 import timm
 from torchvision.transforms import Resize
-from efficientnet_pytorch import EfficientNet
+# from efficientnet_pytorch import EfficientNet
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swin_large_patch4_window12_384'):
+    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384'):
         super().__init__()
 
         self.current_epoch = 0
