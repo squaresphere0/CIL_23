@@ -56,6 +56,9 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swin_large_patch4_window12_384'):
         super().__init__()
 
+        self.current_epoch = 0
+
+
         # Load the SWIN Transformer model, but remove the classification head
         self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0)
         self.swin.head = nn.Identity()
@@ -66,31 +69,30 @@ class PixelSwinT(nn.Module):
 
         num_channels = 1536
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
-        
-        # self.upscale = nn.Identity()
-        # self.upscale = nn.Sequential(
-        #     nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 2),
-        #     nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 4),
-        #     nn.ReLU(),
+        self.upscale = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 2),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 8),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 4),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 16),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 8),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 32),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 16),
+            nn.ReLU(),
 
-        #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
-        # )
+            nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 32),
+            nn.ReLU(),
+
+            nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        )
         self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
@@ -113,9 +115,14 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        # x = self.upscale(x)
+        if self.current_epoch <= 20:
+            x = self.upsample(x)
+            x = self.reduce_channels(x)
+            x = self.batchnorm(x)
+            return x
+
+        x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
-        x = self.reduce_channels(x)
         x = self.batchnorm(x)
         # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
@@ -288,8 +295,9 @@ def main(args):
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     iou_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
-    optimizer_rest = torch.optim.Adam(rest_of_model_params)
+    optimizer = torch.optim.Adam(model.parameters())
+    # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
+    # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
@@ -344,11 +352,11 @@ def main(args):
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
             # Backward pass and optimization
-            optimizer_rest.zero_grad()
+            optimizer.zero_grad()
             # optimizer_upscale.zero_grad()
             loss.backward()
             # if epoch < 40:
-            optimizer_rest.step()
+            optimizer.step()
             # optimizer_upscale.step()
 
             running_loss += loss.item()
