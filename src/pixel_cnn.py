@@ -245,8 +245,9 @@ class conditionalPixelCNN(nn.Module):
         pixel.
         '''
         prediction = torch.randn(batchsize, self.map_ch, dim, dim)
+#        prediction = torch.zeros(batchsize, self.map_ch, dim, dim)   
         for _ in range(steps):
-            prediction = prediction * bias
+            prediction = bias(prediction)
             prediction = self(torch.cat((prediction, hint), 1))
             prediction = shift_mask(prediction)
         # we need to shift the output back to the range (0,1)
@@ -255,7 +256,7 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name):
+    def training(model, loader, optimizer, epochs, name, noise):
         model.train()
         losses = []
         for epoch in range(epochs):
@@ -281,7 +282,7 @@ class conditionalPixelCNN(nn.Module):
                     losses.append(loss.detach())
 
             torch.save({'model_state_dict': model.state_dict(),
-                        'loss_history': losses
+#                        'loss_history': losses
                        }, 'model/'+name+'.pt')
 
         return losses
