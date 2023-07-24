@@ -1,4 +1,5 @@
 import comet_ml
+import cairosvg
 
 import torch
 from torch import nn
@@ -62,7 +63,7 @@ model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format
 cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
 with open('temp_graph.png', 'rb') as f:
     image_bytes = f.read()
-    experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
+    comet_experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
     # experiment.set_model_graph(model_graph_json)
 
 losses = conditionalPixelCNN.training(model,loader,optimizer, 200,

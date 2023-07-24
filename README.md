@@ -30,6 +30,7 @@ python -m venv venv --system-site-packages
 export SETUPTOOLS_USE_DISTUTILS=stdlib
 pip install comet_ml
 pip install torchview
+pip install cairosvg
 
 ```
 
