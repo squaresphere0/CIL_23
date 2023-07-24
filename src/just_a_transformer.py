@@ -13,6 +13,7 @@ from PIL import Image
 from io import BytesIO
 import cairosvg
 import random
+import copy
 
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
@@ -279,7 +280,7 @@ def main(args):
     model = PixelSwinT().to(device)
 
     initial_weights_name = 'model/initial_swin_weights.pth'
-    initial_weights = model.swin.state_dict()
+    initial_weights = copy.deepcopy(model.swin.state_dict())
     # if os.path.isfile(initial_weights_name):
     #     model.swin.load_state_dict(torch.load(initial_weights_name))
 
