@@ -265,16 +265,16 @@ class DiceLoss(nn.Module):
 def main(args):
     send_message("Loaded to the execution environment.")
 
-    # # Fix randomness
-    # seed = 42
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    # np.random.seed(seed)  # Numpy module.
-    # random.seed(seed)  # Python random module.
-    # torch.manual_seed(seed)
-    # torch.backends.cudnn.benchmark = False
-    # torch.backends.cudnn.deterministic = True
+    # Fix randomness
+    seed = 42
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    np.random.seed(seed)  # Numpy module.
+    random.seed(seed)  # Python random module.
+    torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
     log_custom_info_at_each_nth_epoch = 10
 
