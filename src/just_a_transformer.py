@@ -57,6 +57,8 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_large_window12to24_192to384'):
         super().__init__()
 
+        self.switch_to_simultaneous_training_after_epochs = 30
+
         self.current_epoch = 0
 
 
@@ -168,7 +170,7 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        if self.current_epoch <= 30:
+        if self.current_epoch <= self.switch_to_simultaneous_training_after_epochs:
             x = self.upsample(swin_x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
@@ -343,7 +345,7 @@ def main(args):
     with open('f.txt', 'w') as f:
         f.write(str(model))
 
-    initial_weights_name = 'model/initial_swin_weights.pth'
+    initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
     initial_weights = model.swin.state_dict()
     torch.save(initial_weights, initial_weights_name)
     # if os.path.isfile(initial_weights_name):
@@ -383,6 +385,7 @@ def main(args):
         "batch_size": my_batch_size,
         'bce_weight': bce_weight,
         'extra_weight': extra_weight,
+        'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
     }
     experiment.log_parameters(hyper_params)
     
@@ -482,7 +485,7 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
-            if epoch > 30:
+            if epoch > model.switch_to_simultaneous_training_after_epochs:
                 bce_loss = bce_loss_function_after_20_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
@@ -506,11 +509,13 @@ def main(args):
         running_loss = 0.0
 
         if epoch % 50 == 0 and epoch != 0:
-            torch.save(model, f'model/just_a_tranformer_epoch_{epoch}.pt')
+            torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
             experiment.log_asset(initial_weights_name)
 
-    torch.save(model, 'model/just_a_tranformer_.pt')
-    log_model(experiment, model, model_name='model/just_a_tranformer.pt')
+    model_name = f'model/{experiment.get_key()}_just_a_tranformer_epoch_{num_epochs}.pt'
+    torch.save(model, model_name)
+    experiment.log_asset(model_name)
+    # log_model(experiment, model, model_name)
     # experiment.log_asset(initial_weights_name)
 
 
