@@ -12,7 +12,9 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Load your saved model
-model = torch.load('model/resonant_lungfish_7960_just_a_tranformer_epoch_300.pt', map_location=torch.device('cpu'))
+model_filename = 'just_a_tranformer_epoch_50__tuesday_unet_1st_try.pt'
+print(model_filename)
+model = torch.load(f'model/{model_filename}', map_location=torch.device('cpu'))
 
 train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
 val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
