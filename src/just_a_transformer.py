@@ -342,8 +342,6 @@ def main(args):
 
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
-    with open('f.txt', 'w') as f:
-        f.write(str(model))
 
     initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
     initial_weights = model.swin.state_dict()
@@ -358,7 +356,7 @@ def main(args):
     # pos_weight = pos_weight.to(device)
     # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
-    bce_loss_function_after_20_epochs = nn.BCEWithLogitsLoss()
+    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss()
     extra_loss_function = DiceLoss()
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
@@ -388,17 +386,14 @@ def main(args):
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
     }
     experiment.log_parameters(hyper_params)
-    
+    experiment.set_model_graph(str(model))
+
     # Visualize the model
-    model_graph = torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
-    # experiment.log_asset('model_graph.png')
-    # Create a temporary file
-    model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
+    torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
     cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
     with open('temp_graph.png', 'rb') as f:
         image_bytes = f.read()
         experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
-        # experiment.set_model_graph(model_graph_json)
 
     send_message("Starting new computation.")
     msg = "First epoch."
@@ -486,7 +481,7 @@ def main(args):
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
             if epoch > model.switch_to_simultaneous_training_after_epochs:
-                bce_loss = bce_loss_function_after_20_epochs(outputs, label)
+                bce_loss = bce_loss_function_after_n_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
             # Log train loss to Comet.ml
