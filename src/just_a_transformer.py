@@ -237,7 +237,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        if not self.is_train:
+        if True or not self.is_train:
             return x, y
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
@@ -247,7 +247,7 @@ class ImageDataset(torch.utils.data.Dataset):
         return x, y
 
     def __getitem__(self, item):
-        if self.is_train:
+        if False and self.is_train:
             # Figure out the base index of the image and the rotation to apply.
             base_idx = item // len(self.rotations)
             rotation_idx = item % len(self.rotations)
@@ -260,7 +260,7 @@ class ImageDataset(torch.utils.data.Dataset):
             return np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device)
     
     def __len__(self):
-        if self.is_train:
+        if False and self.is_train:
             return self.n_samples * len(self.rotations)
         else:
             return self.n_samples
@@ -553,10 +553,10 @@ def main(args):
         experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'])
         scheduler.step(running_loss / step_counter)
         running_loss = 0.0
-        # Log gradients.
-        for tag, value in model.named_parameters():
-            if value.grad is not None:
-                experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
+        # # Log gradients.
+        # for tag, value in model.named_parameters():
+        #     if value.grad is not None:
+        #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
         if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
