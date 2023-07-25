@@ -239,7 +239,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        if True or not self.is_train:
+        if not self.is_train:
             transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -253,7 +253,7 @@ class ImageDataset(torch.utils.data.Dataset):
         return x, y
 
     def __getitem__(self, item):
-        if False and self.is_train:
+        if self.is_train:
             # Figure out the base index of the image and the rotation to apply.
             base_idx = item // len(self.rotations)
             rotation_idx = item % len(self.rotations)
@@ -266,7 +266,7 @@ class ImageDataset(torch.utils.data.Dataset):
             return np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device)
     
     def __len__(self):
-        if False and self.is_train:
+        if self.is_train:
             return self.n_samples * len(self.rotations)
         else:
             return self.n_samples
