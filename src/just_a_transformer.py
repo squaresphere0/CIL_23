@@ -66,6 +66,8 @@ class PixelSwinT(nn.Module):
 
         # Load the SWIN Transformer model, but remove the classification head
         self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0)
+        data_config = timm.data.resolve_model_data_config(model)
+        print(data_config)
         self.swin.head = nn.Identity()
 
         self.resize = Resize((384, 384))
@@ -439,10 +441,11 @@ def main(args):
     send_message("Starting new computation.")
     msg = "First epoch."
     for epoch in range(num_epochs):
-        if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
-            send_message(msg)
-            # Evaluate on the validation set
-            print("Evaluating, plotting images.")
+        if True:
+            if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
+                send_message(msg)
+                # Evaluate on the validation set
+                print("Evaluating, plotting images.")
             model.eval()  # Put the model in evaluation mode
             val_loss = 0
             with torch.no_grad():
@@ -465,53 +468,56 @@ def main(args):
                     inter = intermediate
 
                     sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary')  # binary case
-                    # print(torch.nonzero(preds))
-                    np_preds = np.squeeze(preds.cpu().numpy())
-                    np_label = np.squeeze(label.cpu().numpy())
-                    np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
-                    np_inter = np.squeeze(inter.cpu().numpy())
-                    # print(np_image.shape)
 
-                    # preds = preds.view(-1)
+                    if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
+                        # print(torch.nonzero(preds))
+                        np_preds = np.squeeze(preds.cpu().numpy())
+                        np_label = np.squeeze(label.cpu().numpy())
+                        np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
+                        np_inter = np.squeeze(inter.cpu().numpy())
+                        # print(np_image.shape)
 
-                    # y_true.extend(label.cpu().numpy())
-                    # y_pred.extend(preds.cpu().numpy())
-                    # print(label.shape, preds.shape)
+                        # preds = preds.view(-1)
 
-                    fig, axs = plt.subplots(1, 4, figsize=(20, 5))
+                        # y_true.extend(label.cpu().numpy())
+                        # y_pred.extend(preds.cpu().numpy())
+                        # print(label.shape, preds.shape)
 
-                    # Display np_image1
-                    axs[0].imshow(np_image, cmap='gray')
-                    axs[0].axis('off')
+                        fig, axs = plt.subplots(1, 4, figsize=(20, 5))
 
-                    # Display np_image2
-                    axs[1].imshow(np_label, cmap='gray')
-                    axs[1].axis('off')
+                        # Display np_image1
+                        axs[0].imshow(np_image, cmap='gray')
+                        axs[0].axis('off')
 
-                    # Display np_image3
-                    axs[3].imshow(np_preds, cmap='gray')
-                    axs[3].axis('off')
+                        # Display np_image2
+                        axs[1].imshow(np_label, cmap='gray')
+                        axs[1].axis('off')
 
-                    # Display np_image4
-                    axs[2].imshow(np_inter, cmap='gray')
-                    axs[2].axis('off')
-                    # Save the figure with both subplots
-                    plt.subplots_adjust(wspace=0, hspace=0)
-                    plt.tight_layout()
-                    plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
-                    # Log to Comet
-                    experiment.log_figure(f'preds/combined_{i}_epoch_{epoch}.png', plt)
+                        # Display np_image3
+                        axs[3].imshow(np_preds, cmap='gray')
+                        axs[3].axis('off')
 
-                    # Send an image
-                    buf = BytesIO()
-                    plt.savefig(buf, format='png')
-                    buf.seek(0)
-                    send_photo(buf, f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary'))  # binary case)
-                    buf.close()
-                    plt.close()
+                        # Display np_image4
+                        axs[2].imshow(np_inter, cmap='gray')
+                        axs[2].axis('off')
+                        # Save the figure with both subplots
+                        plt.subplots_adjust(wspace=0, hspace=0)
+                        plt.tight_layout()
+                        plt.savefig(f'preds/combined_{i}_epoch_{epoch}.png', bbox_inches='tight', pad_inches=0)
+                        # Log to Comet
+                        experiment.log_figure(f'preds/combined_{i}_epoch_{epoch}.png', plt)
 
-            print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
-            send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
+                        # Send an image
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png')
+                        buf.seek(0)
+                        send_photo(buf, f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary'))  # binary case)
+                        buf.close()
+                        plt.close()
+
+            if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
+                print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
+                send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             experiment.log_metric("avg_f1_score", sum_f1 / len(val_dataloader), step=epoch)
             val_loss = sum_f1 / len(val_dataloader)
 

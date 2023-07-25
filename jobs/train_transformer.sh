@@ -5,7 +5,7 @@
 
 #SBATCH --mem-per-cpu=32g
 #SBATCH --gpus=1
-#SBATCH --gres=gpumem:40g
+#SBATCH --gres=gpumem:20g
 
 #SBATCH --job-name=8ca3477c6fafb9cdc4617d535eb237876d050605
 #SBATCH --output=./out/just_a_tr.out
