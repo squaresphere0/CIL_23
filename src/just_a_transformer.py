@@ -57,7 +57,7 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_large_window12to24_192to384'):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 30
+        self.switch_to_simultaneous_training_after_epochs = 20
 
         self.current_epoch = 0
 
