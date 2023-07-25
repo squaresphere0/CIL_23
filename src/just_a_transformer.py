@@ -55,7 +55,7 @@ from torchvision import transforms
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384'):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
@@ -72,36 +72,36 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        num_channels = 1536
+        num_channels = 1024
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
         self.up0 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(768),
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
         )
         self.up1 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=1536, out_channels=768, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(768),
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
         )
         self.up2 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=1152, out_channels=576, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(576),
+            nn.ConvTranspose2d(in_channels=num_channels // 2 + num_channels // 4, out_channels=num_channels // 4 + num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 4 + num_channels // 8),
             nn.ReLU(),
         )
         self.not_up3 = nn.Sequential(
-            nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
-            nn.BatchNorm2d(768),
+            nn.Conv2d(num_channels // 2, num_channels // 2, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
         )
         self.up4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(384),
+            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 4),
             nn.ReLU(),
         )
         self.up5 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=384, out_channels=1, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=1, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(1),
             nn.ReLU(),
         )
@@ -401,7 +401,7 @@ def main(args):
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
 
     my_batch_size = 2
@@ -440,6 +440,7 @@ def main(args):
             # Evaluate on the validation set
             print("Evaluating, plotting images.")
             model.eval()  # Put the model in evaluation mode
+            val_loss = 0
             with torch.no_grad():
                 sum_f1 = 0
                 for i, (image, label) in enumerate(val_dataloader):
@@ -508,6 +509,7 @@ def main(args):
             print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             experiment.log_metric("avg_f1_score", sum_f1 / len(val_dataloader), step=epoch)
+            val_loss = sum_f1 / len(val_dataloader)
 
 
         model.train()  # Put the model in training mode
@@ -551,7 +553,7 @@ def main(args):
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
         experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'])
-        scheduler.step(running_loss / step_counter)
+        scheduler.step(val_loss)
         running_loss = 0.0
         # # Log gradients.
         # for tag, value in model.named_parameters():
