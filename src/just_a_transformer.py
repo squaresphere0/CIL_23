@@ -548,8 +548,13 @@ def main(args):
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
+        experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'])
         scheduler.step(running_loss / step_counter)
         running_loss = 0.0
+
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                experiment.log_metric(name, param.grad.max().item())
 
         if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
