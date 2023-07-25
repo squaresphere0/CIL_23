@@ -12,7 +12,7 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Load your saved model
-model_filename = 'just_a_tranformer_epoch_50__tuesday_unet_1st_try.pt'
+model_filename = 'established_cod_1063_just_a_tranformer_epoch_300.pt'
 print(model_filename)
 model = torch.load(f'model/{model_filename}', map_location=torch.device('cpu'))
 
@@ -24,6 +24,7 @@ val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=
 y_true = []
 y_pred = []
 
+model.eval()
 with torch.no_grad():
     sum_f1 = 0
     for i, (image, label) in enumerate(val_dataloader):
@@ -42,10 +43,12 @@ with torch.no_grad():
         threshold = 0.25
         preds = outputs # (outputs > 0.25).float()
         # print(label.shape, preds.shape)
-        sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs > threshold).view(-1).cpu().numpy(), average='binary')  # binary case
+        sum_f1 += f1_score(label.view(-1).cpu().numpy(), (preds > threshold).float().view(-1).cpu().numpy(), average='binary')  # binary case
+        print(f'F1 Score: {f1_score(label.view(-1).cpu().numpy(), (preds > threshold).float().view(-1).cpu().numpy(), average="binary")}')
 
-        # print(torch.nonzero(preds))
-        np_threshold = np.squeeze((outputs > threshold).float().numpy())
+        # print(preds.numpy().shape)
+        np_threshold = np.squeeze((preds > threshold).float().numpy())
+        # print(preds)
         np_preds = np.squeeze(preds.numpy())
         np_label = np.squeeze(label.numpy())
         np_image = np.transpose(np.squeeze(image.numpy()), (1, 2, 0))
