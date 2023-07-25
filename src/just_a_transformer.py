@@ -58,7 +58,7 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 20
+        self.switch_to_simultaneous_training_after_epochs = 30
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
@@ -586,7 +586,7 @@ def main(args):
             running_loss += loss.item()
             step_counter += 1
 
-        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1.5
+        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
