@@ -548,7 +548,7 @@ def main(args):
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
         running_loss = 0.0
 
-        if epoch % 50 == 0 and epoch != 0:
+        if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
         if epoch == 50:
             experiment.log_asset(initial_weights_name)
