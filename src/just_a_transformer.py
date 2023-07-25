@@ -369,8 +369,9 @@ def main(args):
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
-    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([4.0]).to(device))
-    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([4.0]).to(device))
+    bce_loss_pos_weight = 2.0
+    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([bce_loss_pos_weight]).to(device))
+    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss()
     extra_loss_function = DiceLoss()
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
@@ -397,6 +398,7 @@ def main(args):
         "batch_size": my_batch_size,
         'bce_weight': bce_weight,
         'extra_weight': extra_weight,
+        'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
     }
     experiment.log_parameters(hyper_params)
@@ -483,6 +485,7 @@ def main(args):
                     plt.close()
             print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
+            experiment.log_metric("avg_f1_score", sum_f1 / len(val_dataloader), step=epoch)
 
 
         model.train()  # Put the model in training mode
