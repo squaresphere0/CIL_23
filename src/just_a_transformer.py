@@ -201,8 +201,10 @@ class RotationTransform:
         self.angles = angles
 
     def __call__(self, x):
-        angle = np.random.choice(self.angles)
-        return transforms.functional.rotate(x, angle)
+        angle = int(np.random.choice(self.angles))
+        # Rotate and convert tensor to PIL for rotation
+        rotated_PIL = transforms.functional.rotate(transforms.ToPILImage()(x), angle)
+        return transforms.ToTensor()(rotated_PIL)
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -210,6 +212,7 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def __init__(self, path, device, use_patches=False, resize_to=(400, 400)):
         self.path = path
+        self.is_train = 'train' in path
         self.device = device
         self.use_patches = use_patches
         self.resize_to=resize_to
@@ -228,6 +231,8 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y):
+        if not self.is_train:
+            return x, y
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
         transform = RotationTransform([0, 90, 180, 270])
