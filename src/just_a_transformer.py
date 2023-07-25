@@ -168,7 +168,7 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        if self.current_epoch <= 10:
+        if self.current_epoch <= 30:
             x = self.upsample(swin_x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
@@ -482,7 +482,7 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
-            if epoch > 10:
+            if epoch > 30:
                 bce_loss = bce_loss_function_after_20_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
