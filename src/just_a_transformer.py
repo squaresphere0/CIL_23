@@ -407,12 +407,35 @@ def main(args):
     extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
     # optimizer = torch.optim.Adam(model.parameters())
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
+
+    # Different learning rates.
+    higher_lr_layers = [
+        model.reduce_channels,
+        model.up0,
+        model.up1,
+        model.up2,
+        model.not_up3,
+        model.up4,
+        model.up5,
+        model.batchnorm,
+    ]
+    higher_lr_parameters = [param for layer in higher_lr_layers for param in layer.parameters()]
+    # # ---
+    # higher_lr_ids = set(id(p) for p in higher_lr_parameters)
+    # lower_lr_parameters = [p for p in model.parameters() if id(p) not in higher_lr_ids]
+    optimizer = torch.optim.Adam([
+        {'params': higher_lr_parameters, 'lr': 1e-3}  # use a higher learning rate for higher_lr_parameters
+    ], lr=1e-4)
+    # optimizer = torch.optim.SGD([
+    #     {"params": lower_lr_parameters, "lr": 0.0001},
+    #     {"params": higher_lr_parameters, "lr": 0.001},
+    # ])
 
 
     my_batch_size = 2
