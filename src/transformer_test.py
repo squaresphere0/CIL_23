@@ -19,7 +19,7 @@ model = torch.load(f'model/{model_filename}', map_location=torch.device('cpu'))
 train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
 val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True)
+val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
 y_true = []
 y_pred = []
