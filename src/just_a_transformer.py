@@ -259,12 +259,13 @@ def send_message(text):
     # print(response.status_code, response.json())
 
 
-def send_photo(photo):
+def send_photo(photo, caption_text=''):
     url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendPhoto"
     files = {'photo': photo}
     data = {
         'chat_id': "502129529",
         'disable_notification': True,
+        'caption': caption_text,  # Add your caption here
     }
     response = requests.post(url, files=files, data=data)
 
@@ -438,7 +439,7 @@ def main(args):
                     preds = outputs # (outputs > 0.15).float()
                     inter = intermediate
 
-                    sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs > 0.25).float().view(-1).cpu().numpy(), average='binary')  # binary case
+                    sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary')  # binary case
                     # print(torch.nonzero(preds))
                     np_preds = np.squeeze(preds.cpu().numpy())
                     np_label = np.squeeze(label.cpu().numpy())
@@ -480,9 +481,10 @@ def main(args):
                     buf = BytesIO()
                     plt.savefig(buf, format='png')
                     buf.seek(0)
-                    send_photo(buf)
+                    send_photo(buf, f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary'))  # binary case)
                     buf.close()
                     plt.close()
+
             print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             experiment.log_metric("avg_f1_score", sum_f1 / len(val_dataloader), step=epoch)
