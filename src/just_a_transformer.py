@@ -59,6 +59,7 @@ class PixelSwinT(nn.Module):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
+        self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
@@ -524,7 +525,7 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
-            if epoch > model.switch_to_simultaneous_training_after_epochs:
+            if epoch > model.switch_to_simultaneous_training_after_epochs and model.epoch_loss_threshold_achieved:
                 bce_loss = bce_loss_function_after_n_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
@@ -545,6 +546,7 @@ def main(args):
             running_loss += loss.item()
             step_counter += 1
 
+        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1.5
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
