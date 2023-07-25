@@ -66,7 +66,7 @@ class PixelSwinT(nn.Module):
 
         # Load the SWIN Transformer model, but remove the classification head
         self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0)
-        data_config = timm.data.resolve_model_data_config(model)
+        data_config = timm.data.resolve_model_data_config(self.swin)
         print(data_config)
         self.swin.head = nn.Identity()
 
@@ -385,6 +385,10 @@ def main(args):
 
     # Create the model and move it to the GPU if available
     model = PixelSwinT().to(device)
+    for param in model.parameters():
+        # param.requires_grad = True
+        if not param.requires_grad:
+            print(f'param, requires_grad: :{param}, {param.requires_grad}')
 
     initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
     initial_weights = model.swin.state_dict()
@@ -402,7 +406,8 @@ def main(args):
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
-    optimizer = torch.optim.Adam(model.parameters())
+    # optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
@@ -559,18 +564,18 @@ def main(args):
             step_counter += 1
 
         model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1.5
-        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
+        msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
         experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'], step=epoch)
-        scheduler.step(val_loss)
+        # scheduler.step(val_loss)
         running_loss = 0.0
         # # Log gradients.
         # for tag, value in model.named_parameters():
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
-        if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
+        if epoch % 50 == 0 and epoch != 0 or model.epoch_loss_threshold_achieved:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
         if epoch == 50:
             experiment.log_asset(initial_weights_name)
