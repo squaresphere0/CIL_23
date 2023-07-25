@@ -168,7 +168,7 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        if self.current_epoch <= 10:
+        if self.current_epoch <= 20:
             x = self.upsample(swin_x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
@@ -482,7 +482,7 @@ def main(args):
             # Forward pass
             outputs, intermediate = model(image)
             bce_loss = bce_loss_function(outputs, label)
-            if epoch > 10:
+            if epoch > 20:
                 bce_loss = bce_loss_function_after_20_epochs(outputs, label)
             extra_loss = extra_loss_function(outputs, label)
             loss = bce_weight * bce_loss + extra_weight * extra_loss
@@ -509,7 +509,7 @@ def main(args):
             torch.save(model, f'model/just_a_tranformer_epoch_{epoch}.pt')
             experiment.log_asset(initial_weights_name)
 
-    torch.save(model, 'model/just_a_tranformer_.pt')
+    torch.save(model, 'model/just_a_tranformer.pt')
     log_model(experiment, model, model_name='model/just_a_tranformer.pt')
     # experiment.log_asset(initial_weights_name)
 
