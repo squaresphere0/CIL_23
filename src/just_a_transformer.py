@@ -14,6 +14,7 @@ from io import BytesIO
 import cairosvg
 import random
 import copy
+from sklearn.metrics import f1_score
 
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
@@ -412,6 +413,7 @@ def main(args):
             print("Evaluating, plotting images.")
             model.eval()  # Put the model in evaluation mode
             with torch.no_grad():
+                sum_f1 = 0
                 for i, (image, label) in enumerate(val_dataloader):
                     # resize = transforms.Resize((224, 224))
                     # image = resize(image)
@@ -428,6 +430,8 @@ def main(args):
                     # Apply a threshold of 0.5: above -> 1, below -> 0
                     preds = outputs # (outputs > 0.15).float()
                     inter = intermediate
+
+                    sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs > 0.25).float().view(-1).cpu().numpy(), average='binary')  # binary case
                     # print(torch.nonzero(preds))
                     np_preds = np.squeeze(preds.cpu().numpy())
                     np_label = np.squeeze(label.cpu().numpy())
@@ -472,6 +476,9 @@ def main(args):
                     send_photo(buf)
                     buf.close()
                     plt.close()
+            print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
+            send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
+
 
         model.train()  # Put the model in training mode
         running_loss = 0.0
