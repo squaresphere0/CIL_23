@@ -400,6 +400,8 @@ def main(args):
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+
 
     my_batch_size = 2
     train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -546,6 +548,7 @@ def main(args):
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
+        scheduler.step(running_loss / step_counter)
         running_loss = 0.0
 
         if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
