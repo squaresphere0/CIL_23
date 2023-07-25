@@ -383,7 +383,7 @@ def main(args):
     initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
     initial_weights = model.swin.state_dict()
     torch.save(initial_weights, initial_weights_name)
-    model.swin.load_state_dict(torch.load('model/' + 'slimy_siding_8354_initial_swin_weights.pth'))
+    # model.swin.load_state_dict(torch.load('model/' + 'slimy_siding_8354_initial_swin_weights.pth'))
 
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
