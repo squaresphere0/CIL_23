@@ -238,6 +238,10 @@ class ImageDataset(torch.utils.data.Dataset):
 
     def _preprocess(self, x, y, angle=0):
         if True or not self.is_train:
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
             return x, y
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
@@ -552,7 +556,7 @@ def main(args):
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
-        experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'])
+        experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'], step=epoch)
         scheduler.step(val_loss)
         running_loss = 0.0
         # # Log gradients.
