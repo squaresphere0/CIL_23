@@ -246,17 +246,23 @@ class ImageDataset(torch.utils.data.Dataset):
         return x, y
 
     def __getitem__(self, item):
-        # Figure out the base index of the image and the rotation to apply.
-        base_idx = item // len(self.rotations)
-        rotation_idx = item % len(self.rotations)
-        rotation = self.rotations[rotation_idx]
+        if self.is_train:
+            # Figure out the base index of the image and the rotation to apply.
+            base_idx = item // len(self.rotations)
+            rotation_idx = item % len(self.rotations)
+            rotation = self.rotations[rotation_idx]
 
-        x, y = self._preprocess(np_to_tensor(self.x[base_idx], self.device), np_to_tensor(self.y[[base_idx]], self.device), angle=rotation)
+            x, y = self._preprocess(np_to_tensor(self.x[base_idx], self.device), np_to_tensor(self.y[[base_idx]], self.device), angle=rotation)
 
-        return x, y
+            return x, y
+        else:
+            return np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device)
     
     def __len__(self):
-        return self.n_samples * len(self.rotations)
+        if self.is_train:
+            return self.n_samples * len(self.rotations)
+        else:
+            return self.n_samples
 
 
 def send_message(text):
