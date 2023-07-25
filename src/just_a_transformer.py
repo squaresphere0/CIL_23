@@ -14,10 +14,11 @@ from io import BytesIO
 import cairosvg
 import random
 import copy
-from sklearn.metrics import f1_score
 
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
+
+from sklearn.metrics import f1_score
 
 import torchvision
 import torchview
@@ -197,11 +198,12 @@ def np_to_tensor(x, device):
 
 
 class RotationTransform:
-    def __init__(self, angles=[0, 90, 180, 270]):
-        self.angles = angles
+    def __init__(self, angle=0):
+        self.angle = angle
 
     def __call__(self, x):
-        angle = int(np.random.choice(self.angles))
+        # angle = int(np.random.choice(self.angle))
+        angle = int(self.angle)
         # Rotate and convert tensor to PIL for rotation
         rotated_PIL = transforms.functional.rotate(transforms.ToPILImage()(x), angle)
         return transforms.ToTensor()(rotated_PIL)
@@ -210,9 +212,10 @@ class RotationTransform:
 class ImageDataset(torch.utils.data.Dataset):
     # dataset class that deals with loading the data and making it available by index.
 
-    def __init__(self, path, device, use_patches=False, resize_to=(400, 400)):
+    def __init__(self, path, device, use_patches=False, resize_to=(400, 400), rotations=[0, 90, 180, 270]):
         self.path = path
         self.is_train = 'train' in path
+        self.rotations = rotations
         self.device = device
         self.use_patches = use_patches
         self.resize_to=resize_to
@@ -230,21 +233,28 @@ class ImageDataset(torch.utils.data.Dataset):
         self.x = np.moveaxis(self.x, -1, 1)  # pytorch works with CHW format instead of HWC
         self.n_samples = len(self.x)
 
-    def _preprocess(self, x, y):
+    def _preprocess(self, x, y, angle=0):
         if not self.is_train:
             return x, y
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
-        transform = RotationTransform([0, 90, 180, 270])
+        transform = RotationTransform(angle)
         x = transform(x)
         y = transform(y)  # Apply the same transformation to y
         return x, y
 
     def __getitem__(self, item):
-        return self._preprocess(np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device))
+        # Figure out the base index of the image and the rotation to apply.
+        base_idx = item // len(self.rotations)
+        rotation_idx = item % len(self.rotations)
+        rotation = self.rotations[rotation_idx]
+
+        x, y = self._preprocess(np_to_tensor(self.x[base_idx], self.device), np_to_tensor(self.y[[base_idx]], self.device), angle=rotation)
+
+        return x, y
     
     def __len__(self):
-        return self.n_samples
+        return self.n_samples * len(self.rotations)
 
 
 def send_message(text):
