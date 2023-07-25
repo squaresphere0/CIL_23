@@ -553,10 +553,10 @@ def main(args):
         experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'])
         scheduler.step(running_loss / step_counter)
         running_loss = 0.0
-
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                experiment.log_metric(name, param.grad.max().item())
+        # Log gradients.
+        for tag, value in model.named_parameters():
+            if value.grad is not None:
+                experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
         if epoch % 50 == 0 and epoch != 0 or epoch == model.switch_to_simultaneous_training_after_epochs - 1:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
