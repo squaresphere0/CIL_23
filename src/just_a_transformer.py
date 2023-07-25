@@ -400,7 +400,7 @@ def main(args):
     send_message("Starting new computation.")
     msg = "First epoch."
     for epoch in range(num_epochs):
-        if epoch % log_custom_info_at_each_nth_epoch == 0:
+        if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
             send_message(msg)
             # Evaluate on the validation set
             print("Evaluating, plotting images.")
