@@ -38,8 +38,6 @@ from torchvision import transforms
 from timm.models.vision_transformer import VisionTransformer
 import timm
 
-import dataloader
-
 from transformer_with_unet import ViTUNet, UnetDecoder
 import torch
 from torch import nn
@@ -50,6 +48,7 @@ import torch
 from torch import nn
 import timm
 from torchvision.transforms import Resize
+from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
 
@@ -196,6 +195,15 @@ def np_to_tensor(x, device):
         return torch.from_numpy(x).contiguous().pin_memory().to(device=device, non_blocking=True)
 
 
+class RotationTransform:
+    def __init__(self, angles=[0, 90, 180, 270]):
+        self.angles = angles
+
+    def __call__(self, x):
+        angle = np.random.choice(self.angles)
+        return transforms.functional.rotate(x, angle)
+
+
 class ImageDataset(torch.utils.data.Dataset):
     # dataset class that deals with loading the data and making it available by index.
 
@@ -221,6 +229,9 @@ class ImageDataset(torch.utils.data.Dataset):
     def _preprocess(self, x, y):
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
+        transform = RotationTransform([0, 90, 180, 270])
+        x = transform(x)
+        y = transform(y)  # Apply the same transformation to y
         return x, y
 
     def __getitem__(self, item):
