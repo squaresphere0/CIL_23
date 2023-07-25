@@ -390,9 +390,9 @@ def main(args):
         if not param.requires_grad:
             print(f'param, requires_grad: :{param}, {param.requires_grad}')
 
-    initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
-    initial_weights = model.swin.state_dict()
-    torch.save(initial_weights, initial_weights_name)
+    # initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
+    # initial_weights = model.swin.state_dict()
+    # torch.save(initial_weights, initial_weights_name)
     # model.swin.load_state_dict(torch.load('model/' + 'slimy_siding_8354_initial_swin_weights.pth'))
 
     # Specify a loss function and an optimizer
@@ -575,10 +575,12 @@ def main(args):
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
-        if epoch % 50 == 0 and epoch != 0 or model.epoch_loss_threshold_achieved:
+        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved.pt'
+        if model.epoch_loss_threshold_achieved and not os.path.isfile(model_name_epoch_loss_threshold_achieved):
+            torch.save(model, model_name_epoch_loss_threshold_achieved)
+            experiment.log_asset(model_name_epoch_loss_threshold_achieved)
+        if epoch % 50 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
-        if epoch == 50:
-            experiment.log_asset(initial_weights_name)
 
     model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
