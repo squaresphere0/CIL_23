@@ -179,6 +179,8 @@ class PixelSwinT(nn.Module):
 
         x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
+        if not self.training:  # If it's in eval mode
+            x = torch.sigmoid(x)
         # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
 
