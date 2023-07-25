@@ -516,7 +516,10 @@ def main(args):
             optimizer.zero_grad()
             # optimizer_upscale.zero_grad()
             loss.backward()
-            # if epoch < 40:
+
+            # # Gradient clipping
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
             optimizer.step()
             # optimizer_upscale.step()
 
