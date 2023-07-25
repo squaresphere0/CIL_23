@@ -502,9 +502,10 @@ def main(args):
 
         if epoch % 50 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
+        if epoch == 50:
             experiment.log_asset(initial_weights_name)
 
-    model_name = f'model/{experiment.get_key()}_just_a_tranformer_epoch_{num_epochs}.pt'
+    model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
     experiment.log_asset(model_name)
     # log_model(experiment, model, model_name)
