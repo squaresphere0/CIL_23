@@ -19,7 +19,7 @@ from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
 
 import torchvision
-from torchview import draw_graph
+import torchview
 
 import tempfile
 import os
@@ -93,7 +93,7 @@ class PixelSwinT(nn.Module):
         )
         self.up4 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(192),
+            nn.BatchNorm2d(384),
             nn.ReLU(),
         )
         self.up5 = nn.Sequential(
@@ -333,7 +333,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     experiment = Experiment(
-        api_key = "1" + "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
+        api_key = "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
         project_name = "cil-23",
         workspace="mrpetrkol"
     )
@@ -368,7 +368,7 @@ def main(args):
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-    my_batch_size = 1
+    my_batch_size = 2
     train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
@@ -387,7 +387,7 @@ def main(args):
     experiment.log_parameters(hyper_params)
     
     # Visualize the model
-    model_graph = draw_graph(model, input_size=(my_batch_size, 3, 400, 400), expand_nested=True)
+    model_graph = torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
     # experiment.log_asset('model_graph.png')
     # Create a temporary file
     model_graph_json = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
