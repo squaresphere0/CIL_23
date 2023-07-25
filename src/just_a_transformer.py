@@ -376,7 +376,7 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-    num_epochs = 100
+    num_epochs = 300
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
