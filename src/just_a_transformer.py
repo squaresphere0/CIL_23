@@ -352,8 +352,8 @@ def main(args):
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
-    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
-    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10.0]).to(device))
+    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([4.0]).to(device))
+    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([4.0]).to(device))
     extra_loss_function = DiceLoss()
 
     bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
