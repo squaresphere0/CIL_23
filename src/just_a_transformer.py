@@ -58,7 +58,7 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 30
+        self.switch_to_simultaneous_training_after_epochs = 60
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
@@ -564,7 +564,7 @@ def main(args):
             running_loss += loss.item()
             step_counter += 1
 
-        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1
+        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 0.5
         if not model.epoch_loss_threshold_achieved:
             at_epoch_loss_threshold_achieved = epoch
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
@@ -582,7 +582,7 @@ def main(args):
         if model.epoch_loss_threshold_achieved and not os.path.isfile(model_name_epoch_loss_threshold_achieved):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
-        if epoch % 50 == 0 and epoch != 0:
+        if epoch % 20 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
 
     model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
