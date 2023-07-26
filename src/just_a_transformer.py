@@ -178,8 +178,8 @@ class PixelSwinT(nn.Module):
         # print("SHape after swin:", x.shape)
 
         if not self.epoch_loss_threshold_achieved:
-            x = self.upsample(swin_x)
-            x = self.reduce_channels(x)
+            x = self.reduce_channels(swin_x)
+            x = self.upsample(x)
             x = self.batchnorm(x)
             return x, intermediate
 
