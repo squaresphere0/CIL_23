@@ -595,7 +595,7 @@ def main(args):
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
         model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
-        if model.epoch_loss_threshold_achieved and not glob.glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
+        if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
         if epoch % 10 == 0 and epoch != 0:
