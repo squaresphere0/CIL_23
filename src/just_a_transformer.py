@@ -55,7 +55,7 @@ from torchvision.transforms import Resize
 from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
-EPOCH_LOSS_THRESHOLD = 0.3
+EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
