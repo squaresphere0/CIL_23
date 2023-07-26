@@ -220,6 +220,7 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, path, device, use_patches=False, resize_to=(400, 400), rotations=[0, 90, 180, 270]):
         self.path = path
         self.is_train = 'train' in path
+        self.preprocessing = False
         self.rotations = rotations
         self.device = device
         self.use_patches = use_patches
@@ -239,11 +240,13 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        if True or not self.is_train:
-            transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        x = transform(x)
+        y = transform(y)
+        if not self.preprocessing or not self.is_train:
             return x, y
         # to keep things simple we will not apply transformations to each sample,
         # but it would be a very good idea to look into preprocessing
@@ -253,23 +256,23 @@ class ImageDataset(torch.utils.data.Dataset):
         return x, y
 
     def __getitem__(self, item):
-        if False and self.is_train:
-            # Figure out the base index of the image and the rotation to apply.
-            base_idx = item // len(self.rotations)
-            rotation_idx = item % len(self.rotations)
-            rotation = self.rotations[rotation_idx]
-
-            x, y = self._preprocess(np_to_tensor(self.x[base_idx], self.device), np_to_tensor(self.y[[base_idx]], self.device), angle=rotation)
-
-            return x, y
-        else:
+        if not self.preprocessing or not self.is_train:
             return np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device)
+
+        # Figure out the base index of the image and the rotation to apply.
+        base_idx = item // len(self.rotations)
+        rotation_idx = item % len(self.rotations)
+        rotation = self.rotations[rotation_idx]
+
+        x, y = self._preprocess(np_to_tensor(self.x[base_idx], self.device), np_to_tensor(self.y[[base_idx]], self.device), angle=rotation)
+
+        return x, y
     
     def __len__(self):
-        if False and self.is_train:
-            return self.n_samples * len(self.rotations)
-        else:
+        if not self.preprocessing or not self.is_train:
             return self.n_samples
+
+        return self.n_samples * len(self.rotations)
 
 
 def send_message(text):
