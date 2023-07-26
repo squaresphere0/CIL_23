@@ -179,9 +179,6 @@ class PixelSwinT(nn.Module):
 
         if not self.epoch_loss_threshold_achieved:
             x = self.reduce_channels(swin_x)
-            x = self.upsample(x)
-            x = self.batchnorm(x)
-            return x, intermediate
 
         x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
