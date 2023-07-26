@@ -410,7 +410,7 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
-    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0, reduced_threshold=0.3, reduction='sum')
+    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0)
 
     # optimizer = torch.optim.Adam(model.parameters())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
@@ -427,7 +427,7 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-    num_epochs = 100
+    num_epochs = 300
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
