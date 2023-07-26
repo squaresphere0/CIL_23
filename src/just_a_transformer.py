@@ -565,7 +565,7 @@ def main(args):
             running_loss += loss.item()
             step_counter += 1
 
-        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 0.5
+        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 0.7
         if not model.epoch_loss_threshold_achieved:
             at_epoch_loss_threshold_achieved = epoch
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
