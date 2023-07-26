@@ -590,6 +590,10 @@ def main(args):
         if epoch % 10 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
 
+        if epoch == 60 and val_loss < 0.7:
+            print("STOPPING BECAUSE F1 SCORE IS TOO LOW AFTER 60 EPOCHS")
+            break
+
     model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
     experiment.log_asset(model_name)
