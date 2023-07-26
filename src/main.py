@@ -19,10 +19,11 @@ import dataloader
 
 
 # Initialize logging to Comet
-comet_experiment = comet_ml.Experiment(
-    api_key = "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
-    project_name = "cil-23",
-    workspace="mrpetrkol"
+
+comet_experiment = Experiment(
+  api_key = "zwN6QzFQ4jB78DoMN4W1ItiOo",
+  project_name = "cil-23",
+  workspace="squaresphere0"
 )
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu' 
@@ -42,7 +43,7 @@ model = conditionalPixelCNN(20,1,4, layers, noise=0.0).to(device)
 optimizer = torch.optim.Adam(model.parameters())
 
 '''
-medium_noise_model = torch.load('model/0.8_drop.pt',
+medium_noise_model = torch.load('model/gaussian_noise_01.pt',
                                 map_location=device)
 
 model.load_state_dict(medium_noise_model['model_state_dict'])
@@ -50,9 +51,15 @@ model.load_state_dict(medium_noise_model['model_state_dict'])
 
 avg = []
 with torch.no_grad():
-    model.eval()
+    model.train(False)
     for image, mask in loader:
-        avg.append(mask.mean())
+        bias = lambda a: a * 0.0
+        prediction = model.inference_by_iterative_refinement(bias,1,BATCHSIZE,
+                                                             100, image)
+        prediction = model(torch.cat((image, mask),1))
+        visualize_images(image.movedim(1,3),
+                         prediction)
+        break
 
 print(avg)
 

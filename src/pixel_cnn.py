@@ -218,7 +218,15 @@ class conditionalPixelCNN(nn.Module):
         for layer in self.layer_list:
             # For the layers past the first we can use residual layers
             x = layer(x) + x
-        return self.head(x)
+
+        x = self.head(x)
+
+        if self.training:
+            # No sigmoid layer for training
+            return x
+        else:
+            return torch.sigmoid(x)
+
 
     def generate_samples(self, num, dim, conditional):
         '''
@@ -278,7 +286,7 @@ class conditionalPixelCNN(nn.Module):
                     (noisy_mask, image), 1))
 
                 loss_function = nn.BCEWithLogitsLoss(pos_weight =
-                                                     torch.tensor(5))
+                                                     torch.tensor(1))
                 loss = loss_function(generated, mask)
 
                 optimizer.zero_grad()
