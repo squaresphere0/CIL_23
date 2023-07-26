@@ -410,7 +410,8 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
-    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0)
+    # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0)
+    loss_function = segmentation_models_pytorch.losses.Lovasz(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
