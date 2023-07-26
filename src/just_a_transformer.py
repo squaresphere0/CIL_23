@@ -55,14 +55,14 @@ from torchvision.transforms import Resize
 from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
-EPOCH_LOSS_THRESHOLD = 0.35
+EPOCH_LOSS_THRESHOLD = 999
 
 
 class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 20
+        self.switch_to_simultaneous_training_after_epochs = 0
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
