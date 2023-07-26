@@ -19,7 +19,7 @@ from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
 
 from sklearn.metrics import f1_score
-from segmentation_models_pytorch.losses import JaccardLoss
+import segmentation_models_pytorch.losses
 
 import torchvision
 import torchview
@@ -403,7 +403,8 @@ def main(args):
     # extra_loss_function = DiceLoss()
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
-    loss_function = JaccardLoss(mode='binary')
+    # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
+    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0001)
