@@ -239,7 +239,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        if not self.is_train:
+        if True or not self.is_train:
             transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -253,7 +253,7 @@ class ImageDataset(torch.utils.data.Dataset):
         return x, y
 
     def __getitem__(self, item):
-        if self.is_train:
+        if False and self.is_train:
             # Figure out the base index of the image and the rotation to apply.
             base_idx = item // len(self.rotations)
             rotation_idx = item % len(self.rotations)
@@ -266,7 +266,7 @@ class ImageDataset(torch.utils.data.Dataset):
             return np_to_tensor(self.x[item], self.device), np_to_tensor(self.y[[item]], self.device)
     
     def __len__(self):
-        if self.is_train:
+        if False and self.is_train:
             return self.n_samples * len(self.rotations)
         else:
             return self.n_samples
@@ -407,35 +407,12 @@ def main(args):
     extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
 
     # optimizer = torch.optim.Adam(model.parameters())
-    # optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
-
-    # Different learning rates.
-    higher_lr_layers = [
-        model.reduce_channels,
-        model.up0,
-        model.up1,
-        model.up2,
-        model.not_up3,
-        model.up4,
-        model.up5,
-        model.batchnorm,
-    ]
-    higher_lr_parameters = [param for layer in higher_lr_layers for param in layer.parameters()]
-    # # ---
-    # higher_lr_ids = set(id(p) for p in higher_lr_parameters)
-    # lower_lr_parameters = [p for p in model.parameters() if id(p) not in higher_lr_ids]
-    optimizer = torch.optim.Adam([
-        {'params': higher_lr_parameters, 'lr': 1e-3}  # use a higher learning rate for higher_lr_parameters
-    ], lr=1e-5)
-    # optimizer = torch.optim.SGD([
-    #     {"params": lower_lr_parameters, "lr": 0.0001},
-    #     {"params": higher_lr_parameters, "lr": 0.001},
-    # ])
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
 
     my_batch_size = 2
@@ -468,6 +445,7 @@ def main(args):
 
     send_message("Starting new computation.")
     msg = "First epoch."
+    at_epoch_loss_threshold_achieved = 0
     for epoch in range(num_epochs):
         if True:
             if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
@@ -587,6 +565,8 @@ def main(args):
             step_counter += 1
 
         model.epoch_loss_threshold_achieved = running_loss / step_counter <= 1
+        if not model.epoch_loss_threshold_achieved:
+            at_epoch_loss_threshold_achieved = epoch
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
@@ -598,7 +578,7 @@ def main(args):
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
-        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved.pt'
+        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
         if model.epoch_loss_threshold_achieved and not os.path.isfile(model_name_epoch_loss_threshold_achieved):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
