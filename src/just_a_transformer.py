@@ -575,13 +575,13 @@ def main(args):
         if not model.epoch_loss_threshold_achieved:
             at_epoch_loss_threshold_achieved = epoch
 
-        # Freeze Swin weights after switching for 5 epochs
-        if model.epoch_loss_threshold_achieved and epoch <= at_epoch_loss_threshold_achieved + 5:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = 0.0001
-        elif epoch > at_epoch_loss_threshold_achieved + 5:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = 0.0001
+        # # Freeze Swin weights after switching for 5 epochs
+        # if model.epoch_loss_threshold_achieved and epoch <= at_epoch_loss_threshold_achieved + 5:
+        #     for param_group in optimizer.param_groups:
+        #         param_group['lr'] = 0.0001
+        # elif epoch > at_epoch_loss_threshold_achieved + 5:
+        #     for param_group in optimizer.param_groups:
+        #         param_group['lr'] = 0.0001
 
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
