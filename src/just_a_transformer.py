@@ -177,7 +177,7 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        if self.current_epoch <= self.switch_to_simultaneous_training_after_epochs:
+        if not self.epoch_loss_threshold_achieved:
             x = self.upsample(swin_x)
             x = self.reduce_channels(x)
             x = self.batchnorm(x)
