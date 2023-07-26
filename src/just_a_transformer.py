@@ -180,6 +180,9 @@ class PixelSwinT(nn.Module):
 
         if not self.epoch_loss_threshold_achieved:
             x = self.reduce_channels(swin_x)
+            x = self.upsample(x)
+            # x = self.batchnorm(x)
+            return x, intermediate
 
         x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
@@ -574,11 +577,11 @@ def main(args):
 
         # Freeze Swin weights after switching for 5 epochs
         if model.epoch_loss_threshold_achieved and epoch <= at_epoch_loss_threshold_achieved + 5:
-            for param in model.swin.parameters():
-                param.requires_grad = False
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = 0.0001
         elif epoch > at_epoch_loss_threshold_achieved + 5:
-            for param in model.swin.parameters():
-                param.requires_grad = True
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = 0.0001
 
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
