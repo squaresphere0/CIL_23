@@ -431,7 +431,7 @@ def main(args):
     # lower_lr_parameters = [p for p in model.parameters() if id(p) not in higher_lr_ids]
     optimizer = torch.optim.Adam([
         {'params': higher_lr_parameters, 'lr': 1e-3}  # use a higher learning rate for higher_lr_parameters
-    ], lr=1e-4)
+    ], lr=1e-5)
     # optimizer = torch.optim.SGD([
     #     {"params": lower_lr_parameters, "lr": 0.0001},
     #     {"params": higher_lr_parameters, "lr": 0.001},
