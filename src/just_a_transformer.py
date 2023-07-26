@@ -220,7 +220,7 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, path, device, use_patches=False, resize_to=(400, 400), rotations=[0, 90, 180, 270]):
         self.path = path
         self.is_train = 'train' in path
-        self.preprocessing = True
+        self.preprocessing = False
         self.rotations = rotations
         self.device = device
         self.use_patches = use_patches
