@@ -570,6 +570,15 @@ def main(args):
         model.epoch_loss_threshold_achieved = running_loss / step_counter <= EPOCH_LOSS_THRESHOLD
         if not model.epoch_loss_threshold_achieved:
             at_epoch_loss_threshold_achieved = epoch
+
+        # Freeze Swin weights after switching for 5 epochs
+        if model.epoch_loss_threshold_achieved and epoch <= at_epoch_loss_threshold_achieved + 5:
+            for param in model.swin.parameters():
+                param.requires_grad = False
+        elif epoch > at_epoch_loss_threshold_achieved + 5:
+            for param in model.swin.parameters():
+                param.requires_grad = True
+
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
         print(msg)
         experiment.log_metric("epoch_loss", running_loss / step_counter, step=epoch)
