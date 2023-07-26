@@ -397,7 +397,7 @@ def main(args):
     # Specify a loss function and an optimizer
     metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
 
-    bce_loss_pos_weight = 20.0
+    bce_loss_pos_weight = 10.0
     bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([bce_loss_pos_weight]).to(device))
     bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss()
     extra_loss_function = DiceLoss()
