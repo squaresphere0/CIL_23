@@ -140,7 +140,7 @@ class PixelSwinT(nn.Module):
 
         #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         # )
-        self.upsample = nn.Upsample(size=(400, 400), mode='bicubic') #, align_corners=True)
+        self.upsample = nn.Upsample(size=(400, 400), mode='bilinear') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
@@ -179,8 +179,8 @@ class PixelSwinT(nn.Module):
         # print("SHape after swin:", x.shape)
 
         if not self.epoch_loss_threshold_achieved:
-            x = self.reduce_channels(swin_x)
             x = self.upsample(x)
+            x = self.reduce_channels(swin_x)
             # x = self.batchnorm(x)
             return x, intermediate
 
