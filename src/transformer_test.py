@@ -12,7 +12,7 @@ import dataloader
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Load your saved model
-model_filename = 'comparative_silkworm_66_just_a_tranformer_epoch_loss_threshold_achieved_epoch_40.pt'
+model_filename = 'fuchsia_wattage_3384_just_a_tranformer_epoch_90.pt'
 print(model_filename)
 model = torch.load(f'model/{model_filename}', map_location=torch.device('cpu'))
 
@@ -40,7 +40,7 @@ with torch.no_grad():
         outputs, _ = model(image)
 
         # Apply a threshold of 0.5: above -> 1, below -> 0
-        threshold = 0.75
+        threshold = 0.1
         preds = outputs # (outputs > 0.25).float()
         # print(label.shape, preds.shape)
         sum_f1 += f1_score(label.view(-1).cpu().numpy(), (preds > threshold).float().view(-1).cpu().numpy(), average='binary')  # binary case
