@@ -584,7 +584,7 @@ def main(args):
         if model.epoch_loss_threshold_achieved and not os.path.isfile(model_name_epoch_loss_threshold_achieved):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
-        if epoch % 20 == 0 and epoch != 0:
+        if epoch % 10 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
 
     model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
