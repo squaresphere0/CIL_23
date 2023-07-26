@@ -19,6 +19,7 @@ from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
 
 from sklearn.metrics import f1_score
+from segmentation_models_pytorch.losses import JaccardLoss
 
 import torchvision
 import torchview
@@ -395,15 +396,14 @@ def main(args):
     # model.swin.load_state_dict(torch.load('model/' + 'slimy_siding_8354_initial_swin_weights.pth'))
 
     # Specify a loss function and an optimizer
-    metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
-
-    bce_loss_pos_weight = 10.0
-    bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([bce_loss_pos_weight]).to(device))
-    bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss()
-    extra_loss_function = DiceLoss()
-
-    bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
-    extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
+    # metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
+    # bce_loss_pos_weight = 10.0
+    # bce_loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([bce_loss_pos_weight]).to(device))
+    # bce_loss_function_after_n_epochs = nn.BCEWithLogitsLoss()
+    # extra_loss_function = DiceLoss()
+    # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
+    # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
+    loss_function = JaccardLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0001)
@@ -427,9 +427,10 @@ def main(args):
         # "weight_decay": optimizer.param_groups[0]['weight_decay'],
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
-        'bce_weight': bce_weight,
-        'extra_weight': extra_weight,
-        'bce_loss_pos_weight': bce_loss_pos_weight,
+        "loss_function": loss_function,
+        # 'bce_weight': bce_weight,
+        # 'extra_weight': extra_weight,
+        # 'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
     }
     experiment.log_parameters(hyper_params)
@@ -541,11 +542,12 @@ def main(args):
             label = label.to(device)
             # Forward pass
             outputs, intermediate = model(image)
-            bce_loss = bce_loss_function(outputs, label)
-            if epoch > model.switch_to_simultaneous_training_after_epochs and model.epoch_loss_threshold_achieved:
-                bce_loss = bce_loss_function_after_n_epochs(outputs, label)
-            extra_loss = extra_loss_function(outputs, label)
-            loss = bce_weight * bce_loss + extra_weight * extra_loss
+            # bce_loss = bce_loss_function(outputs, label)
+            # if epoch > model.switch_to_simultaneous_training_after_epochs and model.epoch_loss_threshold_achieved:
+            #     bce_loss = bce_loss_function_after_n_epochs(outputs, label)
+            # extra_loss = extra_loss_function(outputs, label)
+            # loss = bce_weight * bce_loss + extra_weight * extra_loss
+            loss = loss_function(outputs, label)
             # Log train loss to Comet.ml
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 

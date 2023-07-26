@@ -26,7 +26,7 @@ I've used the train.sh that you supplied and simply changed `main.py` to `src/ma
 This **should be done once** before running any scripts, otherwise just remove the "venv" folder with `rm -rf venv` and start over
 ```
 export SETUPTOOLS_USE_DISTUTILS=stdlib
-module load gcc/8.2.0 python_gpu/3.9.9 graphviz eth_proxy
+module load gcc/8.2.0 python_gpu/3.11.2 graphviz eth_proxy
 python -m venv venv --system-site-packages
 source venv/bin/activate
 
@@ -38,6 +38,8 @@ pip install comet_ml
 pip install torchview
 pip install graphviz
 pip install cairosvg
+
+pip install segmentation_models_pytorch
 
 ```
 

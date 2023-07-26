@@ -17,7 +17,7 @@ rm -rf preds/*
 
 export SETUPTOOLS_USE_DISTUTILS=stdlib
 
-module load gcc/8.2.0 python_gpu/3.9.9 graphviz eth_proxy
+module load gcc/8.2.0 python_gpu/3.11.2 graphviz eth_proxy
 source venv/bin/activate
 
 python -u src/just_a_transformer.py
