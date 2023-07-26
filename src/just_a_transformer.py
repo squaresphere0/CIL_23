@@ -451,7 +451,7 @@ def main(args):
         image_bytes = f.read()
         experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
 
-    send_message("Starting new computation.")
+    send_message(f"Starting new computation. {experiment.get_name()}")
     msg = "First epoch."
     at_epoch_loss_threshold_achieved = 0
     for epoch in range(num_epochs):
