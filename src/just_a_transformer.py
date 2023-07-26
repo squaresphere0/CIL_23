@@ -412,7 +412,7 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
 
     # optimizer = torch.optim.Adam(model.parameters())
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
@@ -480,7 +480,7 @@ def main(args):
                     preds = outputs # (outputs > 0.15).float()
                     inter = intermediate
 
-                    sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary')  # binary case
+                    sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.5).float().view(-1).cpu().numpy(), average='binary')  # binary case
 
                     if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
                         # print(torch.nonzero(preds))
