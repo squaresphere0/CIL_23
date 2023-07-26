@@ -54,6 +54,8 @@ from torchvision.transforms import Resize
 from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
+EPOCH_LOSS_THRESHOLD = 0.3
+
 
 class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
@@ -429,6 +431,7 @@ def main(args):
         "num_epochs": num_epochs,
         "batch_size": my_batch_size,
         "loss_function": loss_function,
+        "EPOCH_LOSS_THRESHOLD": EPOCH_LOSS_THRESHOLD,
         # 'bce_weight': bce_weight,
         # 'extra_weight': extra_weight,
         # 'bce_loss_pos_weight': bce_loss_pos_weight,
@@ -566,7 +569,7 @@ def main(args):
             running_loss += loss.item()
             step_counter += 1
 
-        model.epoch_loss_threshold_achieved = running_loss / step_counter <= 0.7
+        model.epoch_loss_threshold_achieved = running_loss / step_counter <= EPOCH_LOSS_THRESHOLD
         if not model.epoch_loss_threshold_achieved:
             at_epoch_loss_threshold_achieved = epoch
         msg = f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}, Average Loss: {running_loss / step_counter}, Conjunctive training: {model.epoch_loss_threshold_achieved}'
