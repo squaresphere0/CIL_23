@@ -50,7 +50,7 @@ def find_mask_mean():
     return running_mean / count
     # Result: 0.1780 (mask shifted: -0.6440)
 
-def test_model(model_name):
+def test_model(model_name, model_skeleton):
     device = 'cuda' if torch.cuda.is_available() else 'cpu' 
 
     BATCHSIZE = 4
@@ -61,10 +61,7 @@ def test_model(model_name):
 
     loader = DataLoader(original_dataset, BATCHSIZE, shuffle=True)
 
-    layers = [7] + [3 for _ in range(15)]
-
-    model = conditionalPixelCNN(20,1,4, layers, noise=0.0).to(device)
-
+    model = model_skeleton.to(device)
 
     medium_noise_model = torch.load('model/'+model_name+'.pt',
                                     map_location=device)
@@ -77,13 +74,16 @@ def test_model(model_name):
         for image, mask in loader:
             initial_guess = torch.randn(mask.shape)
             prediction = model.inference_by_iterative_refinement(100,BATCHSIZE,
-                                                                100, image,
+                                                                10, image,
                                                                  initial_guess)
-#            prediction = model(torch.cat((mask, torch.zeros(image.shape)),1))
-#            loss = torch.nn.BCEWithLogitsLoss()
-#            print(loss(prediction, mask))
             visualize_images(BATCHSIZE, 
                              image,
                              mask,
                              prediction)
 
+
+layers = [7] + [3 for _ in range(15)]
+
+model = conditionalPixelCNN(20,1,4, layers, noise=0.5,
+                            dropout_type='full')
+test_model('dropout2d_08', model)
