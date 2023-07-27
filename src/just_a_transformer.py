@@ -431,8 +431,8 @@ def main(args):
 
 
     my_batch_size = 2
-    train_dataset = ImageDataset('my_dataset/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-    val_dataset = ImageDataset('my_dataset/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
+    train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
+    val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=8)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=8)
 
