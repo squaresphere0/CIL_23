@@ -421,10 +421,10 @@ def main(args):
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
-
+    dataset_folder = 'my_dataset_small_from_deepglobe_plus_ethz'
     my_batch_size = 2
-    train_dataset = ImageDataset('my_dataset_small_from_deepglobe_plus_ethz/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-    val_dataset = ImageDataset('my_dataset_small_from_deepglobe_plus_ethz/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
+    train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
+    val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=0)
 
@@ -441,7 +441,8 @@ def main(args):
         # 'extra_weight': extra_weight,
         # 'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
-        'dataset': 'my_dataset',
+        'dataset': dataset_folder,
+        'dataset_training_len': len(train_dataloader),
     }
     experiment.log_parameters(hyper_params)
     experiment.set_model_graph(str(model))
