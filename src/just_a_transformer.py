@@ -59,7 +59,7 @@ EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=25):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
@@ -431,10 +431,10 @@ def main(args):
 
 
     my_batch_size = 2
-    train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-    val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=8)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=8)
+    train_dataset = ImageDataset('my_dataset_small_from_deepglobe_plus_ethz/training', 'cuda' if torch.cuda.is_available() else 'cpu')
+    val_dataset = ImageDataset('my_dataset_small_from_deepglobe_plus_ethz/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=0)
 
     num_epochs = 300
 
@@ -481,6 +481,12 @@ def main(args):
 
                     image = image.to(device)
                     label = label.to(device)
+                    # Change sizes according to the output
+                    # Example usage:
+                    # image = torch.randn(400, 400)  # your image here
+                    # label = tensor_to_patches(image)
+                    # label = Resize((25, 25))(label).int()
+
 
                     # image = image.to(device)
                     # label = label.view(-1).to(device)
@@ -558,10 +564,8 @@ def main(args):
 
             image = image.to(device)
             label = label.to(device)
-
             # Change sizes according to the output
-            pool = nn.AdaptiveAvgPool2d((25, 25))
-            label = pool(label)
+            # label = tensor_to_patches(image)
 
             # Forward pass
             outputs, intermediate = model(image)
