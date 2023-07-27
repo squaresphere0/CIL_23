@@ -423,8 +423,8 @@ def main(args):
 
 
     my_batch_size = 2
-    train_dataset = ImageDataset('data/training', 'cuda' if torch.cuda.is_available() else 'cpu')
-    val_dataset = ImageDataset('data/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
+    train_dataset = ImageDataset('my_dataset/training', 'cuda' if torch.cuda.is_available() else 'cpu')
+    val_dataset = ImageDataset('my_dataset/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
@@ -441,6 +441,7 @@ def main(args):
         # 'extra_weight': extra_weight,
         # 'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
+        'dataset': 'my_dataset',
     }
     experiment.log_parameters(hyper_params)
     experiment.set_model_graph(str(model))
