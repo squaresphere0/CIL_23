@@ -412,9 +412,9 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
+    # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
-    # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0)
+    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.75, gamma=2.0)
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
