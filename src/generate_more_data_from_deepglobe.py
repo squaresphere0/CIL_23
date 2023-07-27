@@ -1,5 +1,10 @@
 import os
 from PIL import Image
+import random
+
+
+SMALL_DATASET = True
+SMALL_DATASET_SIZE = 36
 
 
 # Function to split the image into 4x4 pieces and save
@@ -27,7 +32,7 @@ def split_and_save_images(file_list, dest_subdir, src_dir, dest_dir, size=400):
 
 def main():
     src_dir = "Datasets/DeepGlobe/train/"
-    dest_dir = "my_dataset/training"
+    dest_dir = "my_dataset_small_from_deepglobe_plus_ethz/training/"
 
     # Create the directories if not already exist
     os.makedirs(dest_dir + 'images', exist_ok=True)
@@ -35,13 +40,16 @@ def main():
 
     # List all the files in the source directory
     files = os.listdir(src_dir)
+    files = [file.rsplit('_')[0] for file in files if file.endswith(".png")]
+    if SMALL_DATASET:
+        files = random.sample(files, k=5)
 
     # Filter for the satellite images and the mask images
-    sat_files = [file for file in files if '_sat.jpg' in file]
-    mask_files = [file for file in files if '_mask.png' in file]
+    sat_files = [f'{file}_sat.jpg' for file in files]
+    mask_files = [f'{file}_mask.png' for file in files]
 
     # Split and save the satellite images
-    split_and_save_images(sat_files, 'training/', src_dir, dest_dir)
+    split_and_save_images(sat_files, 'images/', src_dir, dest_dir)
 
     # Split and save the mask images
     split_and_save_images(mask_files, 'groundtruth/', src_dir, dest_dir)
@@ -51,4 +59,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
