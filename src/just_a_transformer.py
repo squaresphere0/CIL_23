@@ -199,11 +199,6 @@ def load_all_from_path(path):
     images = []
     for f in sorted(glob(path + '/*.png')):
         images.append(np.array(Image.open(f)))
-    for f in sorted(glob(path + '/*.jpg')):
-        img = np.array(Image.open(f))
-        alpha_channel = np.ones(img.shape[:2], dtype=img.dtype) * 255
-        img_with_alpha = np.dstack((img, alpha_channel))
-        images.append(img_with_alpha)
     return np.stack(images).astype(np.float32) / 255.
 
 
