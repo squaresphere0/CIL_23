@@ -8,14 +8,14 @@ import PIL
 
 from absl import app, flags
 
+MODEL_NAME = 'developing_cinema_6230_just_a_tranformer_epoch_210'
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
-    "submission_filename", "Datasets/submissions/pred_transformer_fuchsia_wattage_threethreeeight_ninty_epochs.csv", "The output csv for the submission.")
+    "submission_filename", f"Datasets/submissions/{MODEL_NAME}.csv", "The output csv for the submission.")
 flags.DEFINE_string(
-    "base_dir", "test/pred_transformer_fuchsia_wattage_threethreeeight_ninty_epochs", "The directory with the predicted masks.")
-
-MASKS_FOLDER = 'masks_pred_transformer_fuchsia_wattage_3384_90_epochs'
+    "base_dir", f"test/pred_{MODEL_NAME}", "The directory with the predicted masks.")
 
 foreground_threshold = 0.25 # percentage of pixels of val 255 required to assign a foreground label to a patch
 
@@ -31,7 +31,7 @@ def patch_to_label(patch):
 
 def mask_to_submission_strings(image_filename, mask_dir=None):
     """Reads a single image and outputs the strings that should go into the submission file"""
-    img_number = int(re.search(r"\d+", image_filename).group(0))
+    img_number = int(re.search(r"\d+", os.path.basename(image_filename)).group(0))
     im = PIL.Image.open('Datasets/ethz-cil-road-segmentation-2023/' + image_filename)
     im_arr = np.asarray(im)
     if len(im_arr.shape) > 2:
@@ -67,7 +67,7 @@ def masks_to_submission(submission_filename, mask_dir, *image_filenames):
 
 def main(_):
     image_filenames = [os.path.join(FLAGS.base_dir, name) for name in os.listdir('Datasets/ethz-cil-road-segmentation-2023/' + FLAGS.base_dir)]
-    masks_to_submission(FLAGS.submission_filename, f"Datasets/ethz-cil-road-segmentation-2023/test/{MASKS_FOLDER}", *image_filenames)
+    masks_to_submission(FLAGS.submission_filename, f"Datasets/ethz-cil-road-segmentation-2023/test/mask_{MODEL_NAME}", *image_filenames)
 
 if __name__ == '__main__':
     app.run(main)

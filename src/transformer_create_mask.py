@@ -18,6 +18,9 @@ from just_a_transformer import PixelSwinT
 import dataloader
 
 
+MODEL_NAME = 'developing_cinema_6230_just_a_tranformer_epoch_210'  # without .pt extension
+
+
 def save_mask_as_img(preds_tensor, mask_filename):
     os.makedirs(os.path.dirname(mask_filename), exist_ok=True)
 
@@ -63,7 +66,7 @@ layers = [7] + [3 for _ in range(15)]
 #medium_noise_model = torch.load('model/non_auto_regressive_200epochs_0.8noise.pt',
 #                                map_location=device)
 #model.load_state_dict(medium_noise_model['model_state_dict'])
-model = torch.load('model/fuchsia_wattage_3384_just_a_tranformer_epoch_90.pt', map_location=torch.device('cpu'))
+model = torch.load(f'model/{MODEL_NAME}.pt', map_location=torch.device('cpu'))
 
 
 
@@ -245,7 +248,7 @@ image_paths = ["satimage_250.png",
 "satimage_275.png",
 "satimage_249.png"]
 image_paths = sorted(image_paths)
-mask_paths = ["Datasets/ethz-cil-road-segmentation-2023/test/pred_transformer_fuchsia_wattage_threethreeeight_ninty_epochs/" + i for i in image_paths]
+mask_paths = [f"Datasets/ethz-cil-road-segmentation-2023/test/pred_{MODEL_NAME}/" + i for i in image_paths]
 image_paths = ["Datasets/ethz-cil-road-segmentation-2023/test/images/" + i for i in image_paths]
 
 resized_tensors = resize_images(image_paths)
