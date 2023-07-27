@@ -59,7 +59,7 @@ EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
+    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384', input_resolution=192, output_resolution=25):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
@@ -69,12 +69,12 @@ class PixelSwinT(nn.Module):
 
 
         # Load the SWIN Transformer model, but remove the classification head
-        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0)
+        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0, window_size=24, input_resolution=input_resolution)
         data_config = timm.data.resolve_model_data_config(self.swin)
         print(data_config)
         self.swin.head = nn.Identity()
 
-        self.resize = Resize((384, 384))
+        self.resize = Resize((input_resolution, input_resolution))
 
         # self.dropout = nn.Dropout(p=0.5)
 
@@ -140,7 +140,7 @@ class PixelSwinT(nn.Module):
 
         #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         # )
-        self.upsample = nn.Upsample(size=(400, 400), mode='bilinear') #, align_corners=True)
+        self.upsample = nn.Upsample(size=(output_resolution, output_resolution), mode='bilinear') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
@@ -558,6 +558,11 @@ def main(args):
 
             image = image.to(device)
             label = label.to(device)
+
+            # Change sizes according to the output
+            pool = nn.AdaptiveAvgPool2d((25, 25))
+            label = pool(label)
+
             # Forward pass
             outputs, intermediate = model(image)
             # bce_loss = bce_loss_function(outputs, label)
