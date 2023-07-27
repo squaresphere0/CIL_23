@@ -11,7 +11,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import ToTensor, RandomResizedCrop,functional
 
 class LazyImageDataset(Dataset):
-    def __init__(self, csv_file, transform = ToTensor(), size =(200,200)):
+    def __init__(self, csv_file, transform = ToTensor(), size =(200,200),
+                 rrc_scale =(0.08,1), rrc_ratio=(0.75, 1.3333333333333333)):
         self.csv_file = csv_file
         self.image_paths, self.mask_paths = self._read_csv()
         self.transform = transform
@@ -62,9 +63,8 @@ class LazyImageDataset(Dataset):
         image = Image.open(image_path)
         mask = Image.open(mask_path)
 
-        i, j, h, w = RandomResizedCrop.get_params(image,scale=(0.08, 1.0),
-                                                  ratio=(0.75,
-                                                         1.3333333333333333))
+        i, j, h, w = RandomResizedCrop.get_params(image,scale=rrc_scale,
+                                                  ratio=rrc_ratio)
         image = functional.crop(image, i, j, h, w)
         mask = functional.crop(mask, i, j, h, w)
 
