@@ -25,9 +25,12 @@ def split_and_save_images(file_list, dest_subdir, src_dir, dest_dir, size=400):
 
                 # Crop the image
                 cropped_img = img.crop((start_x, start_y, end_x, end_y))
-
+                if '.jpg' in filename:
+                    cropped_img = cropped_img.convert('RGBA')
+                if 'mask' in filename:
+                    cropped_img = cropped_img.convert('L')
                 # Save the cropped image
-                cropped_img.save(dest_dir + dest_subdir + filename.split('.')[0] + f'_{i*2 + j}.' + filename.split('.')[1])
+                cropped_img.save(dest_dir + dest_subdir + filename.split('.')[0] + f'_{i*2 + j}.' + 'png')
 
 
 def main():
