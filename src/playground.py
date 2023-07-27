@@ -75,9 +75,10 @@ def test_model(model_name):
     with torch.no_grad():
         model.train(False)
         for image, mask in loader:
-            bias = lambda a: a
-            prediction = model.inference_by_iterative_refinement(bias,10,BATCHSIZE,
-                                                                100, image)
+            initial_guess = torch.randn(mask.shape)
+            prediction = model.inference_by_iterative_refinement(100,BATCHSIZE,
+                                                                100, image,
+                                                                 initial_guess)
 #            prediction = model(torch.cat((mask, torch.zeros(image.shape)),1))
 #            loss = torch.nn.BCEWithLogitsLoss()
 #            print(loss(prediction, mask))
@@ -86,4 +87,3 @@ def test_model(model_name):
                              mask,
                              prediction)
 
-print(find_mask_mean()*2-1)

@@ -246,18 +246,20 @@ class conditionalPixelCNN(nn.Module):
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 
-    def inference_by_iterative_refinement(self, bias, steps, batchsize, dim, hint):
+    def inference_by_iterative_refinement(self, steps, batchsize, dim, hint,
+                                          initial_guess):
         '''
-        This method uses iterative refinement by feeding a random noise initial
+        This method uses iterative refinement by feeding an initial
         guess through the model repeatedly instead of predicting pixels one by
         one. This is considerably faster than "proper" prediction pixel by
         pixel.
         '''
-        prediction = torch.randn(batchsize, self.map_ch, dim, dim)
-#        prediction = torch.zeros(batchsize, self.map_ch, dim, dim)   
+        prediction = initial_guess
 
         for _ in range(steps):
-            prediction = bias(prediction)
+            # We shift the guess to have roughly the expectd mean
+            prediction = prediction - prediction.mean() - 0.644
+
             prediction = self(torch.cat((prediction, hint), 1))
             prediction = shift_mask(prediction)
         # we need to shift the output back to the range (0,1)
