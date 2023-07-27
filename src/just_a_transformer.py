@@ -196,7 +196,15 @@ class PixelSwinT(nn.Module):
 def load_all_from_path(path):
     # loads all HxW .pngs contained in path as a 4D np.array of shape (n_images, H, W, 3)
     # images are loaded as floats with values in the interval [0., 1.]
-    return np.stack([np.array(Image.open(f)) for f in sorted(glob(path + '/*.png'))]).astype(np.float32) / 255.
+    images = []
+    for f in sorted(glob(path + '/*.png')):
+        images.append(np.array(Image.open(f)))
+    for f in sorted(glob(path + '/*.jpg')):
+        img = np.array(Image.open(f))
+        alpha_channel = np.ones(img.shape[:2], dtype=img.dtype) * 255
+        img_with_alpha = np.dstack((img, alpha_channel))
+        images.append(img_with_alpha)
+    return np.stack(images).astype(np.float32) / 255.
 
 
 def np_to_tensor(x, device):
