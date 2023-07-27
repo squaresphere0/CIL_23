@@ -55,6 +55,7 @@ from torchvision.transforms import Resize
 from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
+CONTINUE_FROM_MODEL_FILENAME = None
 EPOCH_LOSS_THRESHOLD = 0.35
 
 
@@ -388,11 +389,14 @@ def main(args):
     )
 
     # Create the model and move it to the GPU if available
-    model = PixelSwinT().to(device)
-    for param in model.parameters():
-        # param.requires_grad = True
-        if not param.requires_grad:
-            print(f'param, requires_grad: :{param}, {param.requires_grad}')
+    if not CONTINUE_FROM_MODEL_FILENAME:
+        model = PixelSwinT().to(device)
+        for param in model.parameters():
+            # param.requires_grad = True
+            if not param.requires_grad:
+                print(f'param, requires_grad: :{param}, {param.requires_grad}')
+    else:
+        model = torch.load(f'model/{CONTINUE_FROM_MODEL_FILENAME}', map_location=device)
 
     # initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
     # initial_weights = model.swin.state_dict()
@@ -414,7 +418,10 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
+    if not CONTINUE_FROM_MODEL_FILENAME:
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
@@ -443,6 +450,7 @@ def main(args):
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
         'dataset': dataset_folder,
         'dataset_training_len': len(train_dataloader),
+        'continue_from_model_filename': CONTINUE_FROM_MODEL_FILENAME,
     }
     experiment.log_parameters(hyper_params)
     experiment.set_model_graph(str(model))
@@ -454,7 +462,10 @@ def main(args):
         image_bytes = f.read()
         experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
 
-    send_message(f"Starting new computation. {experiment.get_name()}")
+    if not CONTINUE_FROM_MODEL_FILENAME:
+        send_message(f"Starting new computation. {experiment.get_name()}")
+    else:
+        send_message(f"Starting new computation: continuing the model {CONTINUE_FROM_MODEL_FILENAME}.\n{experiment.get_name()}")
     msg = "First epoch."
     at_epoch_loss_threshold_achieved = 0
     for epoch in range(num_epochs):
