@@ -37,6 +37,13 @@ def test_dataloader():
         break
 
 def find_mask_mean():
+    data =LazyImageDataset(
+        'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
+        size=(400,400), rrc_scale=(1,1), rrc_ratio=(1,1))
+
+    loader = DataLoader(data, 8, False)
+    for image, mask in loader:
+        visualize_images(8, image, mask, mask)
 
 
 def test_model(model_name):
@@ -75,4 +82,4 @@ def test_model(model_name):
                              mask,
                              prediction)
 
-test_model('dropout2d_08_1000ep')
+find_mask_mean()

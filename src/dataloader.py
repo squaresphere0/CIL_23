@@ -17,6 +17,9 @@ class LazyImageDataset(Dataset):
         self.image_paths, self.mask_paths = self._read_csv()
         self.transform = transform
         self.resize = Resize(size) # Resize the images to a common size
+        self.rrc_ratio = rrc_ratio
+        self.rrc_scale = rrc_scale
+
 
     def _read_csv(self):
         image_paths = []
@@ -63,8 +66,8 @@ class LazyImageDataset(Dataset):
         image = Image.open(image_path)
         mask = Image.open(mask_path)
 
-        i, j, h, w = RandomResizedCrop.get_params(image,scale=rrc_scale,
-                                                  ratio=rrc_ratio)
+        i, j, h, w = RandomResizedCrop.get_params(image,scale=self.rrc_scale,
+                                                  ratio=self.rrc_ratio)
         image = functional.crop(image, i, j, h, w)
         mask = functional.crop(mask, i, j, h, w)
 
