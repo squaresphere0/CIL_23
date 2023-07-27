@@ -195,7 +195,8 @@ class conditionalPixelCNN(nn.Module):
 
         # Layers only to be applied to the autoregressive image
         self.map_tail = nn.Sequential(
-            nn.Dropout(noise),
+            nn.Dropout2d(noise),
+#            nn.BatchNorm2d(self.map_ch),
             Block(map_ch, features, features, kernels[0], False))
 
         self.layer_list = nn.ModuleList()
@@ -265,12 +266,13 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name, noise=0.0, experiment=None):
+    def training(model, loader, optimizer, epochs, name, noise=0.0,
+                 pos_weight=1, experiment=None):
         hyper_params = {
             'num_epochs': epochs,
             'batch_size': loader.batch_size,
             'noise': noise,
-            'my_parameter': 42,
+            'pos_weight': pos_weight,
         }
         experiment.log_parameters(hyper_params)
 
@@ -280,13 +282,11 @@ class conditionalPixelCNN(nn.Module):
             for i, (image, mask) in enumerate(loader):
                 image = image.to(device)
                 mask = mask.to(device)
-                noisy_mask = (1-noise) * shift_mask(mask)
-                noisy_mask += noise * torch.randn(mask.shape).to(device)
+                noise_func = lambda a: (1-noise) * shift_mask(a) + noise * torch.randn(a.shape).to(device)
                 generated = model(torch.cat(
-                    (noisy_mask, image), 1))
+                    (noise_func(mask), image), 1))
 
-                loss_function = nn.BCEWithLogitsLoss(pos_weight =
-                                                     torch.tensor(1))
+                loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight))
                 loss = loss_function(generated, mask)
 
                 optimizer.zero_grad()
