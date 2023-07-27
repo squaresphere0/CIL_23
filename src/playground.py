@@ -41,10 +41,14 @@ def find_mask_mean():
         'Datasets/ethz-cil-road-segmentation-2023/metadata.csv',
         size=(400,400), rrc_scale=(1,1), rrc_ratio=(1,1))
 
-    loader = DataLoader(data, 8, False)
-    for image, mask in loader:
-        visualize_images(8, image, mask, mask)
+    running_mean = 0
+    count = 0
+    for _, mask in data:
+        running_mean += mask.mean()
+        count += 1
 
+    return running_mean / count
+    # Result: 0.1780 (mask shifted: -0.6440)
 
 def test_model(model_name):
     device = 'cuda' if torch.cuda.is_available() else 'cpu' 
@@ -82,4 +86,4 @@ def test_model(model_name):
                              mask,
                              prediction)
 
-find_mask_mean()
+print(find_mask_mean()*2-1)
