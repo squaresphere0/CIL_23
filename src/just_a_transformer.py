@@ -64,7 +64,7 @@ class PixelSwinT(nn.Module):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
-        self.epoch_loss_threshold_achieved = False if not CONTINUE_FROM_MODEL_FILENAME else True
+        self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
