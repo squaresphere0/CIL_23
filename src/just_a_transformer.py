@@ -55,14 +55,14 @@ from torchvision.transforms import Resize
 from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
 
-EPOCH_LOSS_THRESHOLD = 0.3
+EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_base_window12to24_192to384'):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 30
+        self.switch_to_simultaneous_training_after_epochs = 20
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
@@ -408,10 +408,10 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
+    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
     # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=0.25, gamma=2.0)
-    loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
+    # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
@@ -428,7 +428,7 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1)
 
-    num_epochs = 1000
+    num_epochs = 100
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
