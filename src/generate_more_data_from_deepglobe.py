@@ -27,10 +27,10 @@ def split_and_save_images(file_list, dest_subdir, src_dir, dest_dir, size=400):
 
 def main():
     src_dir = "Datasets/DeepGlobe/train/"
-    dest_dir = "my_dataset/"
+    dest_dir = "my_dataset/training"
 
     # Create the directories if not already exist
-    os.makedirs(dest_dir + 'training', exist_ok=True)
+    os.makedirs(dest_dir + 'images', exist_ok=True)
     os.makedirs(dest_dir + 'groundtruth', exist_ok=True)
 
     # List all the files in the source directory
