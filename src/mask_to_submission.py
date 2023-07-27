@@ -11,9 +11,11 @@ from absl import app, flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
-    "submission_filename", "Datasets/submissions/transformer_epochs_50_24-07-2023.csv", "The output csv for the submission.")
+    "submission_filename", "Datasets/submissions/pred_transformer_fuchsia_wattage_threethreeeight_ninty_epochs.csv", "The output csv for the submission.")
 flags.DEFINE_string(
-    "base_dir", "test/pred_transformer_epoch_monday", "The directory with the predicted masks.")
+    "base_dir", "test/pred_transformer_fuchsia_wattage_threethreeeight_ninty_epochs", "The directory with the predicted masks.")
+
+MASKS_FOLDER = 'masks_pred_transformer_fuchsia_wattage_3384_90_epochs'
 
 foreground_threshold = 0.25 # percentage of pixels of val 255 required to assign a foreground label to a patch
 
@@ -65,7 +67,7 @@ def masks_to_submission(submission_filename, mask_dir, *image_filenames):
 
 def main(_):
     image_filenames = [os.path.join(FLAGS.base_dir, name) for name in os.listdir('Datasets/ethz-cil-road-segmentation-2023/' + FLAGS.base_dir)]
-    masks_to_submission(FLAGS.submission_filename, "", *image_filenames)
+    masks_to_submission(FLAGS.submission_filename, f"Datasets/ethz-cil-road-segmentation-2023/test/{MASKS_FOLDER}", *image_filenames)
 
 if __name__ == '__main__':
     app.run(main)
