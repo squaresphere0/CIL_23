@@ -59,7 +59,7 @@ EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384', input_resolution=192, output_resolution=25):
+    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=25):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 20
