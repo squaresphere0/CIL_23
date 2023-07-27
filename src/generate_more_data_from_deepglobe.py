@@ -42,7 +42,7 @@ def main():
     files = os.listdir(src_dir)
     files = [file.rsplit('_')[0] for file in files if file.endswith(".png")]
     if SMALL_DATASET:
-        files = random.sample(files, k=5)
+        files = random.sample(files, k=SMALL_DATASET_SIZE)
 
     # Filter for the satellite images and the mask images
     sat_files = [f'{file}_sat.jpg' for file in files]
