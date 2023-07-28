@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=23:30:00
+#SBATCH --time=3:30:00
 
 #SBATCH --mem-per-cpu=256g
 #SBATCH --gpus=1
-#SBATCH --gres=gpumem:40g
+#SBATCH --gres=gpumem:70g
 
 #SBATCH --job-name=just_a_tr
 #SBATCH --output=./out/just_a_tr.out
