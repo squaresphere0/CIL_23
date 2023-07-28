@@ -16,44 +16,32 @@ import cairosvg
 import random
 import copy
 
+import requests
+import json
+
 from comet_ml import Experiment
 from comet_ml.integration.pytorch import log_model
 
 from sklearn.metrics import f1_score
 import segmentation_models_pytorch.losses
 
-import torchvision
-import torchview
-
-import tempfile
-import os
-
-import requests
-import json
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch.utils.data import DataLoader
+
+import torchvision
+import torchview
 from torchvision import models
 from torchvision import transforms
+from torchvision.transforms import Resize
 
 from timm.models.vision_transformer import VisionTransformer
 import timm
 
-from transformer_with_unet import ViTUNet, UnetDecoder
-import torch
-from torch import nn
-import timm
-
-
-import torch
-from torch import nn
-import timm
-from torchvision.transforms import Resize
-from torchvision import transforms
 # from efficientnet_pytorch import EfficientNet
+
 
 CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
@@ -414,14 +402,14 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
-    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=3.0)
+    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
     if not CONTINUE_FROM_MODEL_FILENAME:
         optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
