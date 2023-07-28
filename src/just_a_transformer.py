@@ -46,7 +46,7 @@ BATCH_SIZE = 2
 
 
 CONTINUE_FROM_MODEL_FILENAME = None
-# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
+# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_epoch_210.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.3
 
 
@@ -617,14 +617,14 @@ def main(args):
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
-        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
-        if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
+        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
+        if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_epoch_loss_threshold_achieved_epoch_*.pt'):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
         if epoch % 10 == 0 and epoch != 0:
-            torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
+            torch.save(model, f'model/{experiment.get_name()}_epoch_{epoch}.pt')
 
-    model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
+    model_name = f'model/{experiment.get_name()}_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
     # experiment.log_asset(model_name)
     # log_model(experiment, model, model_name)
