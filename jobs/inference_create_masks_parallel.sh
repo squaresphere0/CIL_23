@@ -1,10 +1,12 @@
 #!/bin/bash
 
+model_name="left_lungfish_3846_just_a_tranformer_epoch_250"  # Without .pt
+
 # List of Python scripts to run
 SCRIPTS=()
 for i in {1..14}; do
     multiplied=$((i * 10))
-    SCRIPTS+=("src/transformer_create_mask.py --start_from=${multiplied}")
+    SCRIPTS+=("src/transformer_create_mask.py --start_from=${multiplied} --model_name=${model_name}")
 done
 
 for SCRIPT in "${SCRIPTS[@]}"; do
@@ -14,7 +16,7 @@ for SCRIPT in "${SCRIPTS[@]}"; do
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=1:30:00
 
-#SBATCH --mem-per-cpu=32g
+#SBATCH --mem-per-cpu=4g
 
 #SBATCH --job-name=inference_trans
 #SBATCH --output=./out/inference_trans.out

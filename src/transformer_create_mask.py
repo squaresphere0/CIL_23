@@ -86,6 +86,10 @@ def main(args):
 
     if args.start_from:
         image_paths = image_paths[args.start_from:args.start_from + 10]
+    if args.model_name:
+        model_name = args.model_name
+    else:
+        model_name = MODEL_NAME  # Arguments are more important
 
     #optimizer = torch.optim.Adam(model.parameters())
     #medium_noise_model = torch.load('model/non_auto_regressive_200epochs_0.8noise.pt',
@@ -96,9 +100,9 @@ def main(args):
     loader = DataLoader(original_dataset, BATCHSIZE, shuffle=True)
 
     layers = [7] + [3 for _ in range(15)]
-    model = torch.load(f'model/{MODEL_NAME}.pt', map_location=torch.device(device))
+    model = torch.load(f'model/{model_name}.pt', map_location=torch.device(device))
 
-    mask_paths = [f"Datasets/ethz-cil-road-segmentation-2023/test/pred_{MODEL_NAME}/" + i for i in image_paths]
+    mask_paths = [f"Datasets/ethz-cil-road-segmentation-2023/test/pred_{model_name}/" + i for i in image_paths]
     image_paths = ["Datasets/ethz-cil-road-segmentation-2023/test/images/" + i for i in image_paths]
 
     resized_tensors = resize_images(image_paths)
@@ -132,6 +136,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--start_from', type=int, help='From which image from 144 to 287 to start (renumbered from 0 to 143)')
+    parser.add_argument('--model_name', type=int, help='From which image from 144 to 287 to start (renumbered from 0 to 143)')
     args = parser.parse_args()
 
     main(args)
