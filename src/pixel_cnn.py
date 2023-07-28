@@ -35,7 +35,6 @@ class Block(nn.Module):
                               padding = math.floor(kernel_size/2))
 
         self.block = nn.Sequential(nn.ReLU(),
-#                                  nn.BatchNorm2d(feat_ch),
                                    nn.Conv2d(in_channels = feat_ch,
                                              out_channels = out_ch,
                                              kernel_size = 1),
@@ -175,12 +174,12 @@ class conditionalPixelCNN(nn.Module):
     inference time.
 
     The map is fed through a non referential masked convolution, the hint image
-    is fed through a normal convolution with the same kernal size. Outputs are
+    is fed through a normal convolution with the same kernel size. Outputs are
     concatenated and fed into a masked pipeline like in the PixelCNN.
     '''
 
     def __init__(self, features, map_ch, cond_ch, kernels = (7, 5, 5, 3, 3),
-                 noise = 0.0):
+                 noise = 0.0, dropout_type = 'per_pixel'):
         super().__init__()
 
         # Used to split the input into autoregressive and hint image
@@ -193,17 +192,27 @@ class conditionalPixelCNN(nn.Module):
                       padding=math.floor(kernels[0]/2)),
             nn.ReLU())
 
-        # Layers only to be applied to the autoregressive image
-        self.map_tail = nn.Sequential(
-            nn.Dropout(noise),
-            Block(map_ch, features, features, kernels[0], False))
+        # Layers only to be applied to the autoregressive image.
+        # We differentiate between droping individual pixels from the
+        # autoregressive hint or the whole hint with probability noise.
+        if  dropout_type == 'per_pixel' :
+            self.map_tail = nn.Sequential(
+                nn.Dropout(noise),
+                Block(map_ch, features, features, kernels[0], False))
+        else:
+            self.map_tail = nn.Sequential(
+                nn.Dropout2d(noise),
+                Block(map_ch, features, features, kernels[0], False))
 
+        # The pipeline of masked convolutionsapplied to the concatenated hint
+        # and autoregressive image.
         self.layer_list = nn.ModuleList()
         self.layer_list.append(nn.Conv2d(2*features, 2*features, 1))
         self.layer_list.extend([Block(2*features, features, 2*features, kern,
                                       True) for kern in kernels[1:]])
 
-        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1), nn.Sigmoid())
+        # A 1x1 convolution to arrive at a singular guess for pixel
+        self.head = nn.Sequential(nn.Conv2d(2*features, map_ch, 1))
 
 
     def forward(self, x):
@@ -218,36 +227,54 @@ class conditionalPixelCNN(nn.Module):
         for layer in self.layer_list:
             # For the layers past the first we can use residual layers
             x = layer(x) + x
-        return self.head(x)
+
+        x = self.head(x)
+
+        if self.training:
+            # No sigmoid layer for training
+            return x
+        else:
+            return torch.sigmoid(x)
+
 
     def generate_samples(self, num, dim, conditional):
         '''
+        Predicts the mask for a given satelite image pixel by pixel.
         Works very similarlly to the code from PixelCNN but predicts for a
         whole batch at once. Expects conditional to contain num images i.e.
         one hint image for every sample to be generated.
         '''
         with torch.no_grad():
+            # Start with an empty guess
             map_sample = torch.zeros(num, 1, dim, dim).to(device)
             for y in range(dim):
                 for x in range(dim):
-                    index = dim * y + x
-                    prediction = self.forward(
-                        torch.cat((map_sample, conditional), 1))
+                    # We use bernoulli to sample the distribution guess for the
+                    # next pixel
+                    prediction = torch.bernoulli( self.forward(
+                        torch.cat((map_sample, conditional), 1)))
+                    # We shift the [0,1] image to [-1, 1], which the model
+                    # expects.
                     prediction = shift_mask(prediction)
+                    # Copy exactly one pixel from the output image to the
+                    # final prediction
                     map_sample[:,:,y,x] = prediction[:,:,y,x]
             return map_sample
 
-    def inference_by_iterative_refinement(self, bias, steps, batchsize, dim, hint):
+    def inference_by_iterative_refinement(self, steps, batchsize, dim, hint,
+                                          initial_guess):
         '''
-        This method uses iterative refinement by feeding a random noise initial
+        This method uses iterative refinement by feeding an initial
         guess through the model repeatedly instead of predicting pixels one by
         one. This is considerably faster than "proper" prediction pixel by
         pixel.
         '''
-        prediction = torch.randn(batchsize, self.map_ch, dim, dim)
-#        prediction = torch.zeros(batchsize, self.map_ch, dim, dim)   
+        prediction = initial_guess
+
         for _ in range(steps):
-            prediction = bias(prediction)
+            # We shift the guess to have roughly the expectd mean
+            prediction = prediction - prediction.mean() - 0.644
+
             prediction = self(torch.cat((prediction, hint), 1))
             prediction = shift_mask(prediction)
         # we need to shift the output back to the range (0,1)
@@ -256,42 +283,73 @@ class conditionalPixelCNN(nn.Module):
 
 
     @staticmethod
-    def training(model, loader, optimizer, epochs, name, noise = 0.0):
+    def training(model, loader, optimizer, epochs, name, noise=0.0,
+                 pos_weight=1, experiment=None):
+        '''
+        Training loop for the conditionalPixelCNN with the following inputs
+        model: the model to be trained
+        loader: the dataloader used for training should yield (image, mask)
+                pairs
+        optimizer: the optimizer to be used
+        epochs: the number of epochs to train for
+        name: The name of the model for saving its parameters after training
+        noise: The percentage of gaussian noise to be mixed into the
+                autoregressive input of the model.
+        pos_weight: The relative weight of road pixels compared to non-road
+                    pixels
+        Experimen: The experiment used for logging to comet
+        '''
+        hyper_params = {
+            'num_epochs': epochs,
+            'batch_size': loader.batch_size,
+            'noise': noise,
+            'pos_weight': pos_weight,
+        }
+        experiment.log_parameters(hyper_params)
+
         model.train()
         losses = []
         for epoch in range(epochs):
             for i, (image, mask) in enumerate(loader):
                 image = image.to(device)
                 mask = mask.to(device)
-                mask = (1-noise) * shift_mask(mask)
-                mask += noise * torch.randn(mask.shape).to(device)
+                # A function which mixes some amount of gaussian noise into a
+                # mask
+                noise_func = lambda a: (1-noise) * shift_mask(a) + noise * torch.randn(a.shape).to(device)
+                # The model recieves the noisy mask as input
                 generated = model(torch.cat(
-                    (mask, image), 1))
+                    (noise_func(mask), image), 1))
 
-                loss_function = nn.BCELoss()
+                loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight))
                 loss = loss_function(generated, mask)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
+                experiment.log_metric("train_loss", loss.item(), step=epoch * len(loader) + i)
                 if i % 100 == 0:
 
                     print("Epoch [{}/{}], Iteration [{}/{}], Loss: {:.4f}".format(
                         epoch + 1, epochs, i + 1, len(loader), loss.item()
                     ))
-                    #visualize_images(mask, generated)
+
                     losses.append(loss.detach())
 
-            torch.save({'model_state_dict': model.state_dict(),
-#                        'loss_history': losses
-                       }, 'model/'+name+'.pt')
+            # Save the model state to a file for prediction
+            torch.save({'model_state_dict': model.state_dict()}, 'model/'+name+'.pt')
+            # Save the model to CometML
+            experiment.log_asset('model/'+name+'.pt')
 
         return losses
 
 
 
 def visualize_images(original, reconstructed):
+    '''
+    a helper function to visualize and compare the groundtruth roadsegmentations to a
+    prediction.
+    '''
     fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(12, 6))
     for i in range(4):
         axes[0, i].imshow(original[i].squeeze(), cmap='gray')
