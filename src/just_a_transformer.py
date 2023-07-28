@@ -404,8 +404,8 @@ def main(args):
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
     loss_function = [
-        segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
-        # nn.BCEWithLogitsLoss(),
+        # segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
+        nn.BCEWithLogitsLoss(),
     ]
     loss_weight = [1 for i in range(len(loss_function))]
 
