@@ -42,24 +42,26 @@ import timm
 
 # from efficientnet_pytorch import EfficientNet
 
+BATCH_SIZE = 2
+
 
 CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 0.35
+EPOCH_LOSS_THRESHOLD = 0.3
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 20
+        self.switch_to_simultaneous_training_after_epochs = 50
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
 
         # Load the SWIN Transformer model, but remove the classification head
-        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0, window_size=24, input_resolution=input_resolution)
+        self.swin = timm.create_model(swin_model_name, pretrained=False, num_classes=0, window_size=24, input_resolution=input_resolution)
         data_config = timm.data.resolve_model_data_config(self.swin)
         print(data_config)
         self.swin.head = nn.Identity()
@@ -423,7 +425,7 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
     dataset_folder = 'data'
-    my_batch_size = 8
+    my_batch_size = BATCH_SIZE
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
