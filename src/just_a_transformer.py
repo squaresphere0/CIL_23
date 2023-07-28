@@ -438,7 +438,7 @@ def main(args):
         # 'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
         'dataset': dataset_folder,
-        'dataset_training_len': len(train_dataloader),
+        'dataset_training_len': len(train_dataloader) * my_batch_size,
         'continue_from_model_filename': CONTINUE_FROM_MODEL_FILENAME,
     }
     experiment.log_parameters(hyper_params)
