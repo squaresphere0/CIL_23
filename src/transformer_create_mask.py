@@ -136,7 +136,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--start_from', type=int, help='From which image from 144 to 287 to start (renumbered from 0 to 143)')
-    parser.add_argument('--model_name', type=int, help='From which image from 144 to 287 to start (renumbered from 0 to 143)')
+    parser.add_argument('--model_name', type=str, help='From which image from 144 to 287 to start (renumbered from 0 to 143)')
     args = parser.parse_args()
 
     main(args)
