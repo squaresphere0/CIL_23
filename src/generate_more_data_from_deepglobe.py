@@ -4,7 +4,7 @@ import random
 
 
 SMALL_DATASET = True
-SMALL_DATASET_SIZE = 36
+SMALL_DATASET_SIZE = 144
 
 
 # Function to split the image into 4x4 pieces and save

@@ -400,9 +400,9 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    # loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
+    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
-    loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
+    # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
@@ -417,7 +417,7 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
     dataset_folder = 'my_dataset_small_from_deepglobe_plus_ethz'
-    my_batch_size = 2
+    my_batch_size = 8
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
