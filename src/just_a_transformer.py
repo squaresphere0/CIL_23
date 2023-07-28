@@ -43,7 +43,8 @@ import timm
 # from efficientnet_pytorch import EfficientNet
 
 
-CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
+CONTINUE_FROM_MODEL_FILENAME = None
+# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
 
 
