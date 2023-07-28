@@ -42,12 +42,10 @@ import timm
 
 # from efficientnet_pytorch import EfficientNet
 
-BATCH_SIZE = 2
-
 
 CONTINUE_FROM_MODEL_FILENAME = None
-# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_epoch_210.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 0.3
+# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
+EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
@@ -110,7 +108,7 @@ class PixelSwinT(nn.Module):
         # )
 
         self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
 
@@ -142,12 +140,9 @@ class PixelSwinT(nn.Module):
     def forward(self, x):
         # stage1 = self.swin.layers[0](x)
         # print(f'stage1.shape: {stage1.shape}')
+
+
         x = self.resize(x)
-        resized_input = x
-
-
-        x = self.swin(x)
-        x = x.permute(0, 3, 1, 2)
 
         # embed = self.swin.patch_embed(x)
         # stage0 = self.swin.layers[0](embed)
@@ -163,7 +158,7 @@ class PixelSwinT(nn.Module):
         # up5 = self.up5(up4)
 
 
-        swin_x = self.swin(resized_input)
+        swin_x = self.swin(x)
         swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
         intermediate = self.reduce_channels(swin_x)
         intermediate = self.upsample(intermediate)
@@ -180,7 +175,7 @@ class PixelSwinT(nn.Module):
             x = self.batchnorm(x)
             return x, intermediate
 
-        x = self.upscale(x)
+        x = self.upscale(swin_x)
         x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
@@ -408,8 +403,8 @@ def main(args):
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
     loss_function = [
-        # segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
-        nn.BCEWithLogitsLoss(),
+        segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
+        # nn.BCEWithLogitsLoss(),
     ]
     loss_weight = [1 for i in range(len(loss_function))]
 
@@ -429,7 +424,7 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
     dataset_folder = 'data'
-    my_batch_size = BATCH_SIZE
+    my_batch_size = 8
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
@@ -621,14 +616,14 @@ def main(args):
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
-        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
-        if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_epoch_loss_threshold_achieved_epoch_*.pt'):
+        model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
+        if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
         if epoch % 10 == 0 and epoch != 0:
-            torch.save(model, f'model/{experiment.get_name()}_epoch_{epoch}.pt')
+            torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
 
-    model_name = f'model/{experiment.get_name()}_epoch_{num_epochs}.pt'
+    model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
     # experiment.log_asset(model_name)
     # log_model(experiment, model, model_name)
