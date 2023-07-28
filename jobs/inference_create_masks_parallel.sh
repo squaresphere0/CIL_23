@@ -4,7 +4,7 @@ model_name="left_lungfish_3846_just_a_tranformer_epoch_250"  # Without .pt
 
 # List of Python scripts to run
 SCRIPTS=()
-for i in {1..14}; do
+for i in {0..14}; do
     multiplied=$((i * 10))
     SCRIPTS+=("src/transformer_create_mask.py --start_from=${multiplied} --model_name=${model_name}")
 done
