@@ -51,17 +51,17 @@ EPOCH_LOSS_THRESHOLD = 0.3
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 0
+        self.switch_to_simultaneous_training_after_epochs = 20
         self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
 
         # Load the SWIN Transformer model, but remove the classification head
-        self.swin = timm.create_model(swin_model_name, pretrained=False, num_classes=0, window_size=24, input_resolution=input_resolution)
+        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0, window_size=24, input_resolution=input_resolution)
         data_config = timm.data.resolve_model_data_config(self.swin)
         print(data_config)
         self.swin.head = nn.Identity()
@@ -109,29 +109,29 @@ class PixelSwinT(nn.Module):
         #     nn.ReLU(),
         # )
 
-        # self.upscale = nn.Sequential(
-        #     nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 2),
-        #     nn.ReLU(),
+        self.upscale = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 2),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 4),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 4),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 8),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 8),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 16),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 16),
+            nn.ReLU(),
 
-        #     nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-        #     nn.BatchNorm2d(num_channels // 32),
-        #     nn.ReLU(),
+            nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 32),
+            nn.ReLU(),
 
-        #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
-        # )
+            nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        )
         self.upsample = nn.Upsample(size=(output_resolution, output_resolution), mode='bilinear') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
@@ -146,18 +146,18 @@ class PixelSwinT(nn.Module):
 
         x = self.resize(x)
 
-        embed = self.swin.patch_embed(x)
-        stage0 = self.swin.layers[0](embed)
-        stage1 = self.swin.layers[1](stage0)
-        stage2 = self.swin.layers[2](stage1)
-        stage3 = self.swin.layers[3](stage2)
+        # embed = self.swin.patch_embed(x)
+        # stage0 = self.swin.layers[0](embed)
+        # stage1 = self.swin.layers[1](stage0)
+        # stage2 = self.swin.layers[2](stage1)
+        # stage3 = self.swin.layers[3](stage2)
 
-        up0 = self.up0(stage3.permute(0, 3, 1, 2))        
-        up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
-        up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
-        not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
-        up4 = self.up4(not_up3)
-        up5 = self.up5(up4)
+        # up0 = self.up0(stage3.permute(0, 3, 1, 2))
+        # up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
+        # up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
+        # not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+        # up4 = self.up4(not_up3)
+        # up5 = self.up5(up4)
 
 
         swin_x = self.swin(x)
@@ -177,7 +177,9 @@ class PixelSwinT(nn.Module):
             x = self.batchnorm(x)
             return x, intermediate
 
-        x = self.upsample(up5)  # Upsample to the original image size
+        x = swin_x
+        x = self.upscale(x)
+        x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
