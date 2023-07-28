@@ -401,7 +401,12 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
+    loss_functions = [
+        segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
+        nn.BCEWithLogitsLoss(),
+    ]
+    loss_weights = [1 for i in range(len(loss_functions))]
+
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
     # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
@@ -417,14 +422,14 @@ def main(args):
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
-    dataset_folder = 'my_dataset_small_from_deepglobe_plus_ethz'
-    my_batch_size = 8
+    dataset_folder = 'data'
+    my_batch_size = 16
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=0)
 
-    num_epochs = 300
+    num_epochs = 100
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
@@ -567,7 +572,9 @@ def main(args):
             #     bce_loss = bce_loss_function_after_n_epochs(outputs, label)
             # extra_loss = extra_loss_function(outputs, label)
             # loss = bce_weight * bce_loss + extra_weight * extra_loss
-            loss = loss_function(outputs, label)
+            # loss = loss_function(outputs, label)
+            # Weighing all loss functions and summing them
+            loss = sum([loss_functions[i](outputs, label)*loss_weights[i] for i in range(len(loss_functions))])
             # Log train loss to Comet.ml
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
