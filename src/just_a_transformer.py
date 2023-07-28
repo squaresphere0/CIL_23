@@ -44,7 +44,7 @@ import timm
 
 
 CONTINUE_FROM_MODEL_FILENAME = None
-# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
+CONTINUE_FROM_MODEL_FILENAME = 'prior_conduit_2140_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
 
 
@@ -108,7 +108,7 @@ class PixelSwinT(nn.Module):
         # )
 
         self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
 
