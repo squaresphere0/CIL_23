@@ -34,7 +34,7 @@ def resize_images(image_paths, size):
 def create_masks(model_name, model_skeleton):
 
     image_size = 100
-    BATCHSIZE = 4
+    BATCHSIZE = 16
 
     image_paths = ["satimage_"+str(i)+".png" for i in range(144,288,1)]
     mask_paths = ["Datasets/ethz-cil-road-segmentation-2023/test/" + model_name
@@ -58,9 +58,9 @@ def create_masks(model_name, model_skeleton):
 
             initial_guess = torch.randn(BATCHSIZE, 1, image_size, image_size)
             generated = model.inference_by_iterative_refinement(
-                image_size,
+                100,
                 BATCHSIZE,
-                10,
+                image_size,
                 batch_tensor,
                 initial_guess)
 
