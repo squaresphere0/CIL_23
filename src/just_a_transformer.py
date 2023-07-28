@@ -110,7 +110,7 @@ class PixelSwinT(nn.Module):
         # )
 
         self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
 
@@ -142,9 +142,12 @@ class PixelSwinT(nn.Module):
     def forward(self, x):
         # stage1 = self.swin.layers[0](x)
         # print(f'stage1.shape: {stage1.shape}')
-
-
         x = self.resize(x)
+        resized_input = x
+
+
+        x = self.swin(x)
+        x = x.permute(0, 3, 1, 2)
 
         # embed = self.swin.patch_embed(x)
         # stage0 = self.swin.layers[0](embed)
@@ -160,7 +163,7 @@ class PixelSwinT(nn.Module):
         # up5 = self.up5(up4)
 
 
-        swin_x = self.swin(x)
+        swin_x = self.swin(resized_input)
         swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
         intermediate = self.reduce_channels(swin_x)
         intermediate = self.upsample(intermediate)
@@ -417,7 +420,7 @@ def main(args):
 
     # optimizer = torch.optim.Adam(model.parameters())
     if not CONTINUE_FROM_MODEL_FILENAME:
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
