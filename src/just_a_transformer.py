@@ -180,7 +180,6 @@ class PixelSwinT(nn.Module):
             x = self.batchnorm(x)
             return x, intermediate
 
-        x = swin_x
         x = self.upscale(x)
         x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
