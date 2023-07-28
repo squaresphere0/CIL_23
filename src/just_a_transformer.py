@@ -401,11 +401,11 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    loss_functions = [
+    loss_function = [
         segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
         nn.BCEWithLogitsLoss(),
     ]
-    loss_weights = [1 for i in range(len(loss_functions))]
+    loss_weight = [1 for i in range(len(loss_function))]
 
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
     # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
@@ -574,7 +574,7 @@ def main(args):
             # loss = bce_weight * bce_loss + extra_weight * extra_loss
             # loss = loss_function(outputs, label)
             # Weighing all loss functions and summing them
-            loss = sum([loss_functions[i](outputs, label)*loss_weights[i] for i in range(len(loss_functions))])
+            loss = sum([loss_function[i](outputs, label)*loss_weight[i] for i in range(len(loss_function))])
             # Log train loss to Comet.ml
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
