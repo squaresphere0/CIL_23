@@ -86,7 +86,7 @@ class CompactBilinearPooling(nn.Module):
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
         self.switch_to_simultaneous_training_after_epochs = 30
@@ -105,7 +105,7 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        num_channels = 1536
+        num_channels = 1024
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
         self.up0 = nn.Sequential(
