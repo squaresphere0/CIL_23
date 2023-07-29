@@ -47,13 +47,35 @@ CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.25
 
+class FeatureAttention(nn.Module):
+    def __init__(self, channels1, channels2):
+        super().__init__()
+        self.query = nn.Conv2d(channels1, 1, kernel_size=1)
+        self.key = nn.Conv2d(channels2, 1, kernel_size=1)
+
+    def forward(self, x1, x2):
+        q = self.query(x1)
+        k = self.key(x2)
+
+        # Compute attention weights
+        attention_weights = torch.softmax(q + k, dim=-1)
+
+        # Apply attention weights to both x1 and x2
+        x1_weighted = attention_weights * x1
+        x2_weighted = attention_weights * x2
+
+        # Combine the weighted features
+        combined_weighted = x1_weighted + x2_weighted
+
+        return combined_weighted
+
 
 class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 30
-        self.epoch_loss_threshold_achieved = False
+        self.switch_to_simultaneous_training_after_epochs = 0
+        self.epoch_loss_threshold_achieved = True
 
         self.current_epoch = 0
 
@@ -151,6 +173,10 @@ class PixelSwinT(nn.Module):
             # nn.Sigmoid(),
         )
 
+        self.feature_attention = FeatureAttention(channels1=num_channels, channels2=num_channels)
+        # combined_features = self.feature_attention(unet_features, swin_features)
+
+
     def conv_block(self, in_channels, out_channels):
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=2), # Change stride to 2
@@ -177,91 +203,37 @@ class PixelSwinT(nn.Module):
 
         x = self.resize(x)
 
-        if not self.epoch_loss_threshold_achieved:
-            embed = self.swin.patch_embed(x)
-            stage0 = self.swin.layers[0](embed)
-            stage1 = self.swin.layers[1](stage0)
-            stage2 = self.swin.layers[2](stage1)
-            stage3 = self.swin.layers[3](stage2)
+        # UNet
+        # -> B, 3, 384, 384
+        down0_1 = self.down0_1(x)  # -> B, 96, 192, 192
+        down0_2 = self.down0_2(down0_1)  # -> B, 192, 96, 96
+        conv_same_dims = self.conv_same_dims(down0_2)
+        down1 = self.down1(conv_same_dims)  # -> B, 384, 48, 48
+        down2 = self.down2(down1)  # -> B, 768, 24, 24
+        down3 = self.down3(down2)  # -> B, 1536, 12, 12
+        unet_features = down3
+        # Swin2
+        swin_features = self.swin(x).permute(0, 3, 1, 2)
 
-            # B, 3, 384, 384
-            down0_1 = self.down0_1(x)  # -> B, 96, 192, 192
-            down0_2 = self.down0_2(down0_1)  # -> B, 192, 96, 96
-            conv_same_dims = self.conv_same_dims(down0_2)
-            down1 = self.down1(conv_same_dims)  # -> B, 384, 48, 48
-            down2 = self.down2(down1)  # -> B, 768, 24, 24
-            down3 = self.down3(down2)  # -> B, 1536, 12, 12
+        combined = self.feature_attention(unet_features, swin_features)
 
-            up0 = self.up0(down3)
-            up1 = self.up1(torch.cat([up0, down2], dim=1))
-            up2 = self.up2(torch.cat([up1, down1], dim=1))
-            conv3 = self.conv3(torch.cat([up2, conv_same_dims], dim=1))
-            up4 = self.up4(torch.cat([conv3, down0_2], dim=1))
-            up5 = self.up5(up4)
-            dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
-
-            x = dilated5_after_embed
-            x = self.upsample(x)  # Upsample to the original image size
-            x = self.batchnorm(x)
-
-            if not self.training:  # If it's in eval mode
-                x = torch.sigmoid(x)
-
-            intermediate = self.reduce_channels(down3)
-            return x, intermediate
-        else:
-            embed = self.swin.patch_embed(x)
-            stage0 = self.swin.layers[0](embed)
-            stage1 = self.swin.layers[1](stage0)
-            stage2 = self.swin.layers[2](stage1)
-            stage3 = self.swin.layers[3](stage2)
-
-            up0 = self.up0(stage3.permute(0, 3, 1, 2))
-            up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
-            up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
-            conv3 = self.conv3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
-            up4 = self.up4(torch.cat([conv3, embed.permute(0, 3, 1, 2)], dim=1))
-            up5 = self.up5(up4)
-            dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
-
-            x = dilated5_after_embed
-            x = self.upsample(x)  # Upsample to the original image size
-            x = self.batchnorm(x)
-
-            if not self.training:  # If it's in eval mode
-                x = torch.sigmoid(x)
-
-            intermediate = self.reduce_channels(stage3.permute(0, 3, 1, 2))
-            intermediate = self.upsample(intermediate)
-            return x, intermediate
-
-
-
-
-
-        swin_x = self.swin(x)
-        swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
-        intermediate = self.reduce_channels(swin_x)
-        intermediate = self.upsample(intermediate)
-        # intermediate = self.classifier(intermediate)
-        # x = self.reduce_dim(x)  # reduce dimensionality to 1
-        # print(x.shape)
-        # x = F.interpolate(x, size=(224, 224))
-        # print("SHape after swin:", x.shape)
-
-        # if not self.epoch_loss_threshold_achieved:
-            # x = swin_x
-            # x = self.upsample(x)
-            # x = self.reduce_channels(x)
-            # x = self.batchnorm(x)
-            # return x, intermediate
+        # Decoder
+        up0 = self.up0(combined)
+        up1 = self.up1(torch.cat([up0, down2], dim=1))
+        up2 = self.up2(torch.cat([up1, down1], dim=1))
+        conv3 = self.conv3(torch.cat([up2, conv_same_dims], dim=1))
+        up4 = self.up4(torch.cat([conv3, down0_2], dim=1))
+        up5 = self.up5(up4)
+        dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
 
         x = dilated5_after_embed
         x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
+
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
 
+        intermediate = self.reduce_channels(combined)
         return x, intermediate
 
 
