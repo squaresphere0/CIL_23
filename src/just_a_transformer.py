@@ -135,11 +135,39 @@ class PixelSwinT(nn.Module):
 
             nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         )
+
+        # Adding convolutional layers
+        self.down0_1 = self.conv_block(3, num_channels // 16)  # -> B, 96, 192, 192
+        self.down0_2 = self.conv_block(num_channels // 16, num_channels // 8)  # -> B, 192, 96, 96
+        self.conv_same_dims = self.conv_block_same_dims(num_channels // 8, num_channels // 8)
+        self.down1 = self.conv_block(num_channels // 8, num_channels // 4)  # -> B, 384, 48, 48
+        self.down2 = self.conv_block(num_channels // 4, num_channels // 2)  # -> B, 768, 24, 24
+        self.down3 = self.conv_block(num_channels // 2, num_channels)  # -> B, 1536, 12, 12
+
         self.upsample = nn.Upsample(size=(output_resolution, output_resolution), mode='bilinear') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
             # nn.Sigmoid(),
+        )
+
+    def conv_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=2), # Change stride to 2
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+    def conv_block_same_dims(self, in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
         )
 
     def forward(self, x):
@@ -149,19 +177,65 @@ class PixelSwinT(nn.Module):
 
         x = self.resize(x)
 
-        embed = self.swin.patch_embed(x)
-        stage0 = self.swin.layers[0](embed)
-        stage1 = self.swin.layers[1](stage0)
-        stage2 = self.swin.layers[2](stage1)
-        stage3 = self.swin.layers[3](stage2)
+        if not self.epoch_loss_threshold_achieved:
+            embed = self.swin.patch_embed(x)
+            stage0 = self.swin.layers[0](embed)
+            stage1 = self.swin.layers[1](stage0)
+            stage2 = self.swin.layers[2](stage1)
+            stage3 = self.swin.layers[3](stage2)
 
-        up0 = self.up0(stage3.permute(0, 3, 1, 2))
-        up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
-        up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
-        conv3 = self.conv3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
-        up4 = self.up4(torch.cat([conv3, embed.permute(0, 3, 1, 2)], dim=1))
-        up5 = self.up5(up4)
-        dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
+            # B, 3, 384, 384
+            down0_1 = self.down0_1(x)  # -> B, 96, 192, 192
+            down0_2 = self.down0_2(down0_1)  # -> B, 192, 96, 96
+            conv_same_dims = self.conv_same_dims(down0_2)
+            down1 = self.down1(conv_same_dims)  # -> B, 384, 48, 48
+            down2 = self.down2(down1)  # -> B, 768, 24, 24
+            down3 = self.down3(down2)  # -> B, 1536, 12, 12
+
+            up0 = self.up0(down3)
+            up1 = self.up1(torch.cat([up0, down2], dim=1))
+            up2 = self.up2(torch.cat([up1, down1], dim=1))
+            conv3 = self.conv3(torch.cat([up2, conv_same_dims], dim=1))
+            up4 = self.up4(torch.cat([conv3, down0_2], dim=1))
+            up5 = self.up5(up4)
+            dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
+
+            x = dilated5_after_embed
+            x = self.upsample(x)  # Upsample to the original image size
+            x = self.batchnorm(x)
+
+            if not self.training:  # If it's in eval mode
+                x = torch.sigmoid(x)
+
+            intermediate = x
+            return x, intermediate
+        else:
+            embed = self.swin.patch_embed(x)
+            stage0 = self.swin.layers[0](embed)
+            stage1 = self.swin.layers[1](stage0)
+            stage2 = self.swin.layers[2](stage1)
+            stage3 = self.swin.layers[3](stage2)
+
+            up0 = self.up0(stage3.permute(0, 3, 1, 2))
+            up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
+            up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
+            conv3 = self.conv3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+            up4 = self.up4(torch.cat([conv3, embed.permute(0, 3, 1, 2)], dim=1))
+            up5 = self.up5(up4)
+            dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
+
+            x = dilated5_after_embed
+            x = self.upsample(x)  # Upsample to the original image size
+            x = self.batchnorm(x)
+
+            if not self.training:  # If it's in eval mode
+                x = torch.sigmoid(x)
+
+            intermediate = x
+            return x, intermediate
+
+
+
 
 
         swin_x = self.swin(x)
@@ -174,19 +248,19 @@ class PixelSwinT(nn.Module):
         # x = F.interpolate(x, size=(224, 224))
         # print("SHape after swin:", x.shape)
 
-        if not self.epoch_loss_threshold_achieved:
-            x = swin_x
-            x = self.upsample(x)
-            x = self.reduce_channels(x)
-            x = self.batchnorm(x)
-            return x, intermediate
+        # if not self.epoch_loss_threshold_achieved:
+            # x = swin_x
+            # x = self.upsample(x)
+            # x = self.reduce_channels(x)
+            # x = self.batchnorm(x)
+            # return x, intermediate
 
         x = dilated5_after_embed
         x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
-        # x = self.classifier(x)  # Classify each pixel
+
         return x, intermediate
 
 
