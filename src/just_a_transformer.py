@@ -207,7 +207,7 @@ class PixelSwinT(nn.Module):
             if not self.training:  # If it's in eval mode
                 x = torch.sigmoid(x)
 
-            intermediate = x
+            intermediate = self.reduce_channels(down3)
             return x, intermediate
         else:
             embed = self.swin.patch_embed(x)
@@ -231,7 +231,7 @@ class PixelSwinT(nn.Module):
             if not self.training:  # If it's in eval mode
                 x = torch.sigmoid(x)
 
-            intermediate = x
+            intermediate = self.reduce_channels(stage3)
             return x, intermediate
 
 
