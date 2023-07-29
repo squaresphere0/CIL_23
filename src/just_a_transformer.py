@@ -706,6 +706,9 @@ def main(args):
         # for tag, value in model.named_parameters():
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
+        if epoch == 200 - 1:
+            optimizer.param_groups[0]['lr'] = 0.000001
+            optimizer.param_groups[1]['lr'] = 0.000001
 
         model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
         if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
