@@ -50,24 +50,22 @@ EPOCH_LOSS_THRESHOLD = 0.25
 class FeatureAttention(nn.Module):
     def __init__(self, channels1, channels2):
         super().__init__()
-        self.query = nn.Conv2d(channels1, 1, kernel_size=1)
-        self.key = nn.Conv2d(channels2, 1, kernel_size=1)
+        self.query = nn.Conv2d(channels1, channels1, kernel_size=1)
+        self.key = nn.Conv2d(channels2, channels2, kernel_size=1)
+        self.value = nn.Conv2d(channels2, channels2, kernel_size=1)
 
     def forward(self, x1, x2):
-        q = self.query(x1)
-        k = self.key(x2)
+        q = self.query(x1)   # Shape: [B, C1, H, W]
+        k = self.key(x2)     # Shape: [B, C2, H, W]
+        v = self.value(x2)   # Shape: [B, C2, H, W]
 
-        # Compute attention weights
-        attention_weights = torch.softmax(q + k, dim=-1)
+        # Compute attention weights, shape: [B, C, H, W]
+        attention_weights = torch.softmax(q * k, dim=1)
 
-        # Apply attention weights to both x1 and x2
-        x1_weighted = attention_weights * x1
-        x2_weighted = attention_weights * x2
+        # Apply attention weights to v, and add the result to x1
+        combined_features = (attention_weights * v) + x1
 
-        # Combine the weighted features
-        combined_weighted = x1_weighted + x2_weighted
-
-        return combined_weighted
+        return combined_features
 
 
 class PixelSwinT(nn.Module):
@@ -234,6 +232,8 @@ class PixelSwinT(nn.Module):
             x = torch.sigmoid(x)
 
         intermediate = self.reduce_channels(combined)
+        intermediate = self.upsample(intermediate)
+
         return x, intermediate
 
 
