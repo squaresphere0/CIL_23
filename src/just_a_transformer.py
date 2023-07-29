@@ -45,15 +45,15 @@ import timm
 
 CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 999
+EPOCH_LOSS_THRESHOLD = 0.25
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 0
-        self.epoch_loss_threshold_achieved = True
+        self.switch_to_simultaneous_training_after_epochs = 20
+        self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
@@ -68,7 +68,7 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        num_channels = 1024
+        num_channels = 1536
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
         self.up0 = nn.Sequential(
@@ -406,7 +406,7 @@ def main(args):
         segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
         # nn.BCEWithLogitsLoss(),
     ]
-    loss_weight = [1 for i in range(len(loss_function))]
+    loss_weight = [1.0 for i in range(len(loss_function))]
 
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
     # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
