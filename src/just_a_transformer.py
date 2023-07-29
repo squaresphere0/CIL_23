@@ -59,7 +59,7 @@ class PixelSwinT(nn.Module):
 
 
         # Load the SWIN Transformer model, but remove the classification head
-        self.swin = timm.create_model(swin_model_name, pretrained=True, num_classes=0, window_size=24, input_resolution=input_resolution)
+        self.swin = timm.create_model(swin_model_name, pretrained=False, num_classes=0, window_size=24, input_resolution=input_resolution)
         data_config = timm.data.resolve_model_data_config(self.swin)
         print(data_config)
         self.swin.head = nn.Identity()
