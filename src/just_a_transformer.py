@@ -89,8 +89,8 @@ class PixelSwinT(nn.Module):
     def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 0
-        self.epoch_loss_threshold_achieved = True
+        self.switch_to_simultaneous_training_after_epochs = 20
+        self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
@@ -217,6 +217,19 @@ class PixelSwinT(nn.Module):
 
 
         x = self.resize(x)
+
+        # Train Swin only for some time.
+        if not self.epoch_loss_threshold_achieved:
+            swin_x = self.swin(x).permute(0, 3, 1, 2)
+            intermediate = self.reduce_channels(swin_x)
+            intermediate = self.upsample(intermediate)
+
+            x = swin_x
+            x = self.upsample(x)
+            x = self.reduce_channels(x)
+            x = self.batchnorm(x)
+            return x, intermediate
+
 
         # UNet
         # -> B, 3, 384, 384
