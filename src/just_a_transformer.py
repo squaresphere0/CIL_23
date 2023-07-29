@@ -43,9 +43,9 @@ import timm
 # from efficientnet_pytorch import EfficientNet
 
 
-CONTINUE_FROM_MODEL_FILENAME = None
-CONTINUE_FROM_MODEL_FILENAME = 'prior_conduit_2140_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 0.35
+# CONTINUE_FROM_MODEL_FILENAME = None
+CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
+EPOCH_LOSS_THRESHOLD = 999
 
 
 class PixelSwinT(nn.Module):
@@ -424,7 +424,7 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
     dataset_folder = 'data'
-    my_batch_size = 8
+    my_batch_size = 4
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
