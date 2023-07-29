@@ -86,26 +86,31 @@ class PixelSwinT(nn.Module):
             nn.BatchNorm2d(num_channels // 4 + num_channels // 8),
             nn.ReLU(),
         )
-        self.not_up3 = nn.Sequential(
-            nn.Conv2d(num_channels // 2, num_channels // 2, kernel_size=3, stride=1, padding=2, dilation=2),
-            nn.BatchNorm2d(num_channels // 2),
-            nn.ReLU(),
-        )
-        self.up4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(num_channels // 4),
             nn.ReLU(),
         )
+        self.up4 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=num_channels // 4 + num_channels // 8, out_channels=num_channels // 8 + num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 8 + num_channels // 16),
+            nn.ReLU(),
+        )
         self.up5 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=1, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.ConvTranspose2d(in_channels=num_channels // 8 + num_channels // 16, out_channels=num_channels // 16 + num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 16 + num_channels // 32),
+            nn.ReLU(),
+        )
+        # Dilated is with skip connection
+        self.dilated5_after_embed = nn.Sequential(
+            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, num_channels // 16 + num_channels // 32 + 3, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(num_channels // 16 + num_channels // 32 + 3),
+            nn.ReLU(),
+            # Reduce dims as well
+            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, 1, kernel_size=3, stride=1, padding=2, dilation=2),
             nn.BatchNorm2d(1),
             nn.ReLU(),
         )
-        # self.not_up6 = nn.Sequential(
-        #     nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
-        #     nn.BatchNorm2d(768),
-        #     nn.ReLU(),
-        # )
 
         self.upscale = nn.Sequential(
             nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
@@ -153,9 +158,10 @@ class PixelSwinT(nn.Module):
         up0 = self.up0(stage3.permute(0, 3, 1, 2))
         up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
         up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
-        not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
-        up4 = self.up4(not_up3)
+        conv3 = self.conv3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+        up4 = self.up4(torch.cat([conv3, embed.permute(0, 3, 1, 2)], dim=1))
         up5 = self.up5(up4)
+        dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
 
 
         swin_x = self.swin(x)
@@ -175,8 +181,8 @@ class PixelSwinT(nn.Module):
             x = self.batchnorm(x)
             return x, intermediate
 
-        # x = self.upscale(swin_x)
-        x = self.upsample(up5)  # Upsample to the original image size
+        x = dilated5_after_embed
+        x = self.upsample(x)  # Upsample to the original image size
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
@@ -451,7 +457,8 @@ def main(args):
     experiment.set_model_graph(str(model))
 
     # Visualize the model
-    torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
+    model_graph = torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
+    model_graph_svg = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
     cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
     with open('temp_graph.png', 'rb') as f:
         image_bytes = f.read()
