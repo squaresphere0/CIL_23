@@ -47,42 +47,24 @@ CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
 
-class CompactBilinearPooling(nn.Module):
-    def __init__(self, input_dim1, input_dim2, output_dim):
+class MLPFusion(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels):
         super().__init__()
-
-        # Create random Tensor Sketch matrix for both inputs
-        self.S1 = self.generate_sketch_matrix(input_dim1, output_dim)
-        self.S2 = self.generate_sketch_matrix(input_dim2, output_dim)
-
-    def generate_sketch_matrix(self, input_dim, output_dim):
-        S = torch.randint(0, 2, (input_dim,)) * 2 - 1
-        return S.to(dtype=torch.complex64)
+        self.fusion_network = nn.Sequential(
+            nn.Linear(in_channels, hidden_channels),
+            nn.ReLU(),
+            nn.Linear(hidden_channels, out_channels),
+        )
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x1, x2):
-        assert x1.size() == x2.size()
-        batch_size, channels, height, width = x1.size()
-
-        # Flatten spatial dimensions and combine batch with channels
-        x1 = x1.view(batch_size * channels, height * width)
-        x2 = x2.contiguous().view(batch_size * channels, height * width)
-
-        device = x1.device
-        self.S1 = self.S1.to(device)
-        x1_sketch = torch.fft.fft(x1 * self.S1[:x1.size(1)])
-        self.S2 = self.S2.to(device)
-        x2_sketch = torch.fft.fft(x2 * self.S2[:x2.size(1)])
-
-        # Elementwise product in frequency domain
-        fused = x1_sketch * x2_sketch
-
-        # Inverse FFT to get spatial domain
-        fused = torch.fft.ifft(fused)
-
-        # Reshape to original size
-        fused = fused.view(batch_size, channels, height, width)
-
-        return fused.real  # Return the real part of the complex result
+        # First, concatenate the features
+        combined = torch.cat((x1, x2), dim=1)
+        # Now, use the MLP to determine the weights
+        weights = self.fusion_network(combined)
+        weights = self.sigmoid(weights)  # Ensure the weights are in [0, 1]
+        # Now, use the weights to combine the features
+        return weights * x1 + (1 - weights) * x2
 
 
 class PixelSwinT(nn.Module):
@@ -188,7 +170,7 @@ class PixelSwinT(nn.Module):
             # nn.Sigmoid(),
         )
 
-        self.feature_attention = CompactBilinearPooling(input_dim1=num_channels, input_dim2=num_channels, output_dim=num_channels)
+        self.feature_attention = MLPFusion(in_channels=num_channels, hidden_channels=num_channels // 2, out_channels=num_channels)
         # combined_features = self.feature_attention(unet_features, swin_features)
 
 
