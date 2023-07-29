@@ -97,37 +97,37 @@ class PixelSwinT(nn.Module):
             nn.ReLU(),
         )
         self.up1 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 2),
-            nn.ReLU(),
-        )
-        self.up2 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 2 + num_channels // 4, out_channels=num_channels // 4 + num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 4 + num_channels // 8),
-            nn.ReLU(),
-        )
-        self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(num_channels // 4),
             nn.ReLU(),
         )
+        self.up2 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 8),
+            nn.ReLU(),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_channels // 16),
+            nn.ReLU(),
+        )
         self.up4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 4 + num_channels // 8, out_channels=num_channels // 8 + num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 8 + num_channels // 16),
+            nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 32),
             nn.ReLU(),
         )
         self.up5 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 8 + num_channels // 16, out_channels=num_channels // 16 + num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 16 + num_channels // 32),
+            nn.ConvTranspose2d(num_channels // 32, out_channels=num_channels // 64, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(num_channels // 64),
             nn.ReLU(),
         )
         # Dilated is with skip connection
         self.dilated5_after_embed = nn.Sequential(
-            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, num_channels // 16 + num_channels // 32 + 3, kernel_size=3, stride=1, padding=2, dilation=2),
-            nn.BatchNorm2d(num_channels // 16 + num_channels // 32 + 3),
+            nn.Conv2d(num_channels // 64, num_channels // 64, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(num_channels // 64),
             nn.ReLU(),
             # Reduce dims as well
-            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, 1, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.Conv2d(num_channels // 64, 1, kernel_size=3, stride=1, padding=2, dilation=2),
             nn.BatchNorm2d(1),
             nn.ReLU(),
         )
@@ -213,16 +213,16 @@ class PixelSwinT(nn.Module):
         # Swin2
         swin_features = self.swin(x).permute(0, 3, 1, 2)
 
-        combined = self.feature_attention(unet_features, swin_features)
+        combined = self.feature_attention(unet_features, swin_features)  # -> B, 1536, 12, 12
 
         # Decoder
         up0 = self.up0(combined)
-        up1 = self.up1(torch.cat([up0, down2], dim=1))
-        up2 = self.up2(torch.cat([up1, down1], dim=1))
-        conv3 = self.conv3(torch.cat([up2, conv_same_dims], dim=1))
-        up4 = self.up4(torch.cat([conv3, down0_2], dim=1))
+        up1 = self.up1(up0)
+        up2 = self.up2(up1)
+        conv3 = self.conv3(up2)
+        up4 = self.up4(conv3)
         up5 = self.up5(up4)
-        dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
+        dilated5_after_embed = self.dilated5_after_embed(up5)
 
         x = dilated5_after_embed
         x = self.upsample(x)  # Upsample to the original image size
