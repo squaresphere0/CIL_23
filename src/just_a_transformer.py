@@ -144,18 +144,18 @@ class PixelSwinT(nn.Module):
 
         x = self.resize(x)
 
-        # embed = self.swin.patch_embed(x)
-        # stage0 = self.swin.layers[0](embed)
-        # stage1 = self.swin.layers[1](stage0)
-        # stage2 = self.swin.layers[2](stage1)
-        # stage3 = self.swin.layers[3](stage2)
+        embed = self.swin.patch_embed(x)
+        stage0 = self.swin.layers[0](embed)
+        stage1 = self.swin.layers[1](stage0)
+        stage2 = self.swin.layers[2](stage1)
+        stage3 = self.swin.layers[3](stage2)
 
-        # up0 = self.up0(stage3.permute(0, 3, 1, 2))
-        # up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
-        # up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
-        # not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
-        # up4 = self.up4(not_up3)
-        # up5 = self.up5(up4)
+        up0 = self.up0(stage3.permute(0, 3, 1, 2))
+        up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
+        up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
+        not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+        up4 = self.up4(not_up3)
+        up5 = self.up5(up4)
 
 
         swin_x = self.swin(x)
@@ -175,8 +175,8 @@ class PixelSwinT(nn.Module):
             x = self.batchnorm(x)
             return x, intermediate
 
-        x = self.upscale(swin_x)
-        x = self.upsample(x)  # Upsample to the original image size
+        # x = self.upscale(swin_x)
+        x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
