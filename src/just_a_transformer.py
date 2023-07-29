@@ -496,10 +496,17 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
-    if not CONTINUE_FROM_MODEL_FILENAME:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
-    else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
+    # if not CONTINUE_FROM_MODEL_FILENAME:
+    #     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
+    # else:
+    #     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
+    swin_params = model.swin.parameters()
+    other_params = [p for p in model.parameters() if p not in swin_params]
+    optimizer = torch.optim.SGD([
+        {'params': swin_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Initial learning rate for swin
+        {'params': other_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Default learning rate for other parameters
+    ])
+
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
@@ -700,13 +707,12 @@ def main(args):
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
         if epoch == 200 - 1:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = 0.000001
+            optimizer.param_groups[0]['lr'] = 0.00003
+            optimizer.param_groups[1]['lr'] = 0.00003
 
         model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
         if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = 0.00003
+            optimizer.param_groups[0]['lr'] = 0.00003
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
         if epoch % 10 == 0 and epoch != 0:
