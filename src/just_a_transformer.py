@@ -504,7 +504,7 @@ def main(args):
     other_params = [p for p in model.parameters() if p not in swin_params]
     optimizer = torch.optim.SGD([
         {'params': swin_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Initial learning rate for swin
-        {'params': other_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Default learning rate for other parameters
+        {'params': other_params, 'lr': 0.00003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Default learning rate for other parameters
     ])
 
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
