@@ -47,34 +47,42 @@ CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.25
 
-class FeatureAttention(nn.Module):
-    def __init__(self, in_channels, hidden_channels=None):
+class CompactBilinearPooling(nn.Module):
+    def __init__(self, input_dim1, input_dim2, output_dim):
         super().__init__()
-        if hidden_channels is None:
-            hidden_channels = in_channels
 
-        self.fc1 = nn.Linear(in_channels * 2, hidden_channels)
-        self.fc2 = nn.Linear(hidden_channels, hidden_channels)
-        self.fc3 = nn.Linear(hidden_channels, in_channels)
-        self.relu = nn.ReLU()
+        # Create random Tensor Sketch matrix for both inputs
+        self.S1 = self.generate_sketch_matrix(input_dim1, output_dim)
+        self.S2 = self.generate_sketch_matrix(input_dim2, output_dim)
+
+    def generate_sketch_matrix(self, input_dim, output_dim):
+        S = torch.randint(0, 2, (input_dim,)) * 2 - 1
+        return S.to(dtype=torch.complex64)
 
     def forward(self, x1, x2):
-        # Concatenate along the channel dimension
-        x = torch.cat((x1, x2), dim=1)
-        
-        # Flatten the tensor
-        x = x.view(x.size(0), -1)
-        
-        # Apply the MLP
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        x = self.relu(x)
-        x = self.fc3(x)
+        assert x1.size() == x2.size()
+        batch_size, channels, height, width = x1.size()
 
-        # Reshape back to original spatial dimensions
-        x = x.view(x.size(0), -1, 12, 12)
-        return x
+        # Flatten spatial dimensions and combine batch with channels
+        x1 = x1.view(batch_size * channels, height * width)
+        x2 = x2.contiguous().view(batch_size * channels, height * width)
+
+        device = x1.device
+        self.S1 = self.S1.to(device)
+        x1_sketch = torch.fft.fft(x1 * self.S1[:x1.size(1)])
+        self.S2 = self.S2.to(device)
+        x2_sketch = torch.fft.fft(x2 * self.S2[:x2.size(1)])
+
+        # Elementwise product in frequency domain
+        fused = x1_sketch * x2_sketch
+
+        # Inverse FFT to get spatial domain
+        fused = torch.fft.ifft(fused)
+
+        # Reshape to original size
+        fused = fused.view(batch_size, channels, height, width)
+
+        return fused.real  # Return the real part of the complex result
 
 
 class PixelSwinT(nn.Module):
@@ -180,7 +188,7 @@ class PixelSwinT(nn.Module):
             # nn.Sigmoid(),
         )
 
-        self.feature_attention = FeatureAttention(in_channels=num_channels)
+        self.feature_attention = CompactBilinearPooling(input_dim1=num_channels, input_dim2=num_channels, output_dim=num_channels)
         # combined_features = self.feature_attention(unet_features, swin_features)
 
 
