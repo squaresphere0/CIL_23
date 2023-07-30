@@ -243,7 +243,7 @@ class PixelSwinT(nn.Module):
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
 
-        intermediate = self.reduce_channels(combined)
+        intermediate = self.reduce_channels(unet_features)
         intermediate = self.upsample(intermediate)
 
         return x, intermediate
