@@ -47,24 +47,25 @@ CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
 
-class MLPFusion(nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
+class FeatureAttention(nn.Module):
+    def __init__(self, channels1, channels2):
         super().__init__()
-        self.fusion_network = nn.Sequential(
-            nn.Linear(in_channels, hidden_channels),
-            nn.ReLU(),
-            nn.Linear(hidden_channels, out_channels),
-        )
-        self.sigmoid = nn.Sigmoid()
+        self.query = nn.Conv2d(channels1, channels1, kernel_size=1)
+        self.key = nn.Conv2d(channels2, channels2, kernel_size=1)
+        self.value = nn.Conv2d(channels2, channels2, kernel_size=1)
 
     def forward(self, x1, x2):
-        # First, concatenate the features
-        combined = torch.cat((x1, x2), dim=1)
-        # Now, use the MLP to determine the weights
-        weights = self.fusion_network(combined)
-        weights = self.sigmoid(weights)  # Ensure the weights are in [0, 1]
-        # Now, use the weights to combine the features
-        return weights * x1 + (1 - weights) * x2
+        q = self.query(x1)   # Shape: [B, C1, H, W]
+        k = self.key(x2)     # Shape: [B, C2, H, W]
+        v = self.value(x2)   # Shape: [B, C2, H, W]
+
+        # Compute attention weights, shape: [B, C, H, W]
+        attention_weights = torch.softmax(q * k, dim=1)
+
+        # Apply attention weights to v, and add the result to x1
+        combined_features = (attention_weights * v) + x1
+
+        return combined_features
 
 
 class PixelSwinT(nn.Module):
@@ -170,7 +171,7 @@ class PixelSwinT(nn.Module):
             # nn.Sigmoid(),
         )
 
-        self.feature_attention = MLPFusion(in_channels=num_channels, hidden_channels=num_channels // 2, out_channels=num_channels)
+        self.feature_attention = FeatureAttention(channels1=num_channels, channels2=num_channels)
         # combined_features = self.feature_attention(unet_features, swin_features)
 
 
@@ -446,10 +447,10 @@ def main(args):
     # Create the model and move it to the GPU if available
     if not CONTINUE_FROM_MODEL_FILENAME:
         model = PixelSwinT().to(device)
-        for param in model.parameters():
-            # param.requires_grad = True
-            if not param.requires_grad:
-                print(f'param, requires_grad: :{param}, {param.requires_grad}')
+        # for param in model.parameters():
+        #     # param.requires_grad = True
+        #     if not param.requires_grad:
+        #         print(f'param, requires_grad: :{param}, {param.requires_grad}')
     else:
         model = torch.load(f'model/{CONTINUE_FROM_MODEL_FILENAME}', map_location=device)
 
