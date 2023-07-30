@@ -301,8 +301,8 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        x = transform(x)
+        # transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        # x = transform(x)
         if not self.preprocessing or not self.is_train:
             return x, y
         # to keep things simple we will not apply transformations to each sample,
