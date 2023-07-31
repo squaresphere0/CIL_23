@@ -56,8 +56,9 @@ In the jobs directory bash scripts exist to trin some of the model on euler.
 To pred the evironment this **should be done once** before running any scripts, in the root directory of the repo.
 Otherwise just remove the "venv" folder with `rm -rf venv` and start over.
 ```
+module load gcc/6.3.0 python_gpu/3.8.5 eth_proxy
+python -m venv venv --system-site-packages
 export SETUPTOOLS_USE_DISTUTILS=stdlib
-
 pip install comet_ml
 pip install torchview
 pip install cairosvg
