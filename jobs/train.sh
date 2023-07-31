@@ -13,7 +13,7 @@ cd ..
 
 export SETUPTOOLS_USE_DISTUTILS=stdlib
 
-module load gcc/6.3.0 python_gpu/3.8.5 eth_proxy
+module load gcc/8.2.0 python_gpu/3.11.2 graphviz eth_proxy
 source venv/bin/activate
 
 python -u src/main.py
