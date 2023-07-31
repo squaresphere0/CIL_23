@@ -46,6 +46,7 @@ The following list explains roughly the use of each source code file and whoch o
 |pixel_cnn.py | Contains our implementation of a conditional PixelCNN including the training loop.|
 |main.py | Used to setup training sessions of our PixelCNN. All relevant hyperparameters are exposed either at the initialization of the PixelCNN or at the method call to train it. Saves any trained model into the model directory.|
 |pixelcnn_create_mask.py | Contains the code to load a trained PixelCNN model and generate predictions for the ethz test set. These are saved as images into a directory by the same name as the model inside of the test directory. |
+|dataloader.py | Contains a lazydataloader implementation used for the training of our PixelCNN. |
 |playground.py | Contains some utility functions used during the project to asses PixelCNN models.|
 |---|---|
 |transformer.py| Used for training swin2 with skip connections. |
@@ -59,7 +60,6 @@ The following list explains roughly the use of each source code file and whoch o
 |utils.py | Some utility code for the baselines. |
 |mask_to_submission.py | As provided for the project. |
 |submission_to_mask.py | As provided for the project. |
-|dataloader.py | Contains a lazydataloader implementation used for the training of our PixelCNN. |
 
 All python scripts expect to called from the root directory of the repo. Otherwise the relative paths used will not checkout to the correct locations.
 
