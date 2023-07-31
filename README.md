@@ -23,7 +23,7 @@ pip install segmentation_models_pytorch
 
 ```
 
-### The Bash scripts
+#### The Bash scripts
 
 The bash scripts in the "jobs" are used to train models on euler.
 The scripts are expected to be run from within the "jobs" directory.
@@ -48,7 +48,7 @@ The following list explains roughly the use of each source code file and whoch o
 |pixelcnn_create_mask.py | Contains the code to load a trained PixelCNN model and generate predictions for the ethz test set. These are saved as images into a directory by the same name as the model inside of the test directory. |
 |playground.py | Contains some utility functions used during the project to asses PixelCNN models.|
 |---|---|
-|transformer.py| Used for training swin with skip connections. |
+|transformer.py| Used for training swin2 with skip connections. |
 |generate_more_data_from_deepglobe.py| This code is used to generate data from the DeepGlobe dataset. It crops images of 1024x1024 into four images of 400x400. |
 |src/transformer_create_mask.py| This code is used to perform inference with the transformer model. |
 |---|---|
