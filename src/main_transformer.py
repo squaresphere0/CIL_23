@@ -261,6 +261,7 @@ def main(args):
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    # Provide your Comet.ML API from https://www.comet.com/
     experiment = Experiment(
         api_key = "123",
         project_name = "cil-23",
