@@ -337,21 +337,8 @@ def main(args):
             with torch.no_grad():
                 sum_f1 = 0
                 for i, (image, label) in enumerate(val_dataloader):
-                    # resize = transforms.Resize((224, 224))
-                    # image = resize(image)
-                    # label = resize(label)
-
                     image = image.to(device)
                     label = label.to(device)
-                    # Change sizes according to the output
-                    # Example usage:
-                    # image = torch.randn(400, 400)  # your image here
-                    # label = tensor_to_patches(image)
-                    # label = Resize((25, 25))(label).int()
-
-
-                    # image = image.to(device)
-                    # label = label.view(-1).to(device)
 
                     outputs, intermediate = model(image)
 
@@ -362,18 +349,10 @@ def main(args):
                     sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.5).float().view(-1).cpu().numpy(), average='binary')  # binary case
 
                     if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
-                        # print(torch.nonzero(preds))
                         np_preds = np.squeeze(preds.cpu().numpy())
                         np_label = np.squeeze(label.cpu().numpy())
                         np_image = np.transpose(np.squeeze(image.cpu().numpy()), (1, 2, 0))
                         np_inter = np.squeeze(inter.cpu().numpy())
-                        # print(np_image.shape)
-
-                        # preds = preds.view(-1)
-
-                        # y_true.extend(label.cpu().numpy())
-                        # y_pred.extend(preds.cpu().numpy())
-                        # print(label.shape, preds.shape)
 
                         fig, axs = plt.subplots(1, 4, figsize=(20, 5))
 
