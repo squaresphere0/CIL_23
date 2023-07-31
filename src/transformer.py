@@ -40,11 +40,6 @@ from torchvision.transforms import Resize
 from timm.models.vision_transformer import VisionTransformer
 import timm
 
-# from efficientnet_pytorch import EfficientNet
-
-
-CONTINUE_FROM_MODEL_FILENAME = None
-# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
 EPOCH_LOSS_THRESHOLD = 0.35
 
 
@@ -65,8 +60,6 @@ class PixelSwinT(nn.Module):
         self.swin.head = nn.Identity()
 
         self.resize = Resize((input_resolution, input_resolution))
-
-        # self.dropout = nn.Dropout(p=0.5)
 
         num_channels = 1024
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
@@ -101,12 +94,8 @@ class PixelSwinT(nn.Module):
             nn.BatchNorm2d(1),
             nn.ReLU(),
         )
-        # self.not_up6 = nn.Sequential(
-        #     nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
-        #     nn.BatchNorm2d(768),
-        #     nn.ReLU(),
-        # )
 
+        # Deconvolutions without skip connections
         # self.upscale = nn.Sequential(
         #     nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
         #     nn.BatchNorm2d(num_channels // 2),
@@ -138,10 +127,6 @@ class PixelSwinT(nn.Module):
         )
 
     def forward(self, x):
-        # stage1 = self.swin.layers[0](x)
-        # print(f'stage1.shape: {stage1.shape}')
-
-
         x = self.resize(x)
 
         embed = self.swin.patch_embed(x)
@@ -162,11 +147,6 @@ class PixelSwinT(nn.Module):
         swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
         intermediate = self.reduce_channels(swin_x)
         intermediate = self.upsample(intermediate)
-        # intermediate = self.classifier(intermediate)
-        # x = self.reduce_dim(x)  # reduce dimensionality to 1
-        # print(x.shape)
-        # x = F.interpolate(x, size=(224, 224))
-        # print("SHape after swin:", x.shape)
 
         if not self.epoch_loss_threshold_achieved:
             x = swin_x
@@ -179,7 +159,7 @@ class PixelSwinT(nn.Module):
         x = self.batchnorm(x)
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
-        # x = self.classifier(x)  # Classify each pixel
+
         return x, intermediate
 
 
@@ -202,9 +182,7 @@ class RotationTransform:
         self.angle = angle
 
     def __call__(self, x):
-        # angle = int(np.random.choice(self.angle))
         angle = int(self.angle)
-        # Rotate and convert tensor to PIL for rotation
         rotated_PIL = transforms.functional.rotate(transforms.ToPILImage()(x), angle)
         return transforms.ToTensor()(rotated_PIL)
 
@@ -266,95 +244,7 @@ class ImageDataset(torch.utils.data.Dataset):
         return self.n_samples * len(self.rotations)
 
 
-def send_message(text):
-    url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendMessage"
-    headers = {'Content-Type': 'application/json'}
-    data = {
-        'chat_id': '502129529',
-        'text': text,
-    }
-
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    # print(response.status_code, response.json())
-
-
-def send_photo(photo, caption_text=''):
-    url = "https://api.telegram.org/bot6519873169:AAGxxszlbXMh9CQg9L4gK4EIOGVfcOZE2RI/sendPhoto"
-    files = {'photo': photo}
-    data = {
-        'chat_id': "502129529",
-        'disable_notification': True,
-        'caption': caption_text,  # Add your caption here
-    }
-    response = requests.post(url, files=files, data=data)
-
-
-def patch_accuracy_fn(y_hat, y):
-    # computes accuracy weighted by patches (metric used on Kaggle for evaluation)
-    h_patches = y.shape[-2] // PATCH_SIZE
-    w_patches = y.shape[-1] // PATCH_SIZE
-    patches_hat = y_hat.reshape(-1, 1, h_patches, PATCH_SIZE, w_patches, PATCH_SIZE).mean((-1, -3)) > CUTOFF
-    patches = y.reshape(-1, 1, h_patches, PATCH_SIZE, w_patches, PATCH_SIZE).mean((-1, -3)) > CUTOFF
-    return (patches == patches_hat).float().mean()
-
-
-def accuracy_fn(y_hat, y):
-    # computes classification accuracy
-    return (y_hat.round() == y.round()).float().mean()
-
-
-def iou_loss_f(pred, target, smooth=1e-6, classes='binary'):
-    """
-    Compute the Intersection over Union (IoU) loss.
-
-    Parameters:
-    pred (Tensor): the model's predictions
-    target (Tensor): the ground truth
-    smooth (float, optional): a smoothing factor to prevent division by zero
-    classes (str, optional): 'binary' for binary segmentation tasks, 'multi' for multi-class tasks
-
-    Returns:
-    IoU loss
-    """
-
-    # Reshape to ensure the prediction and target tensors are the same shape
-    pred = pred.view(-1)
-    target = target.view(-1)
-
-    # Compute the intersection
-    intersection = (pred * target).sum()
-
-    # Compute the union
-    if classes.lower() == 'binary':
-        # Binary segmentation -> union = pred + target - intersection
-        union = pred.sum() + target.sum() - intersection
-    elif classes.lower() == 'multi':
-        # Multi-class segmentation -> union = pred + target
-        union = pred.sum() + target.sum()
-    else:
-        raise ValueError(f"'classes' should be 'binary' or 'multi', got {classes}")
-
-    # Compute the IoU and the IoU loss
-    iou = (intersection + smooth) / (union + smooth)
-    iou_loss = 1 - iou
-
-    return iou_loss
-
-
-class DiceLoss(nn.Module):
-    def __init__(self, smooth=1):
-        super().__init__()
-        self.smooth = smooth
-
-    def forward(self, preds, targets):
-        intersection = (preds * targets).sum()
-        dice_coeff = (2.*intersection + self.smooth)/(preds.sum() + targets.sum() + self.smooth)
-        return 1. - dice_coeff
-
-
 def main(args):
-    # send_message("Loaded to the execution environment.")
-
     # Fix randomness
     seed = 42
     torch.manual_seed(seed)
@@ -372,9 +262,9 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     experiment = Experiment(
-        api_key = "x6UJjWwiy9x4Z3RaBjZ4hEHGk",
+        api_key = "123",
         project_name = "cil-23",
-        workspace="mrpetrkol"
+        workspace="1234"
     )
 
     # Create the model and move it to the GPU if available
@@ -386,11 +276,6 @@ def main(args):
                 print(f'param, requires_grad: :{param}, {param.requires_grad}')
     else:
         model = torch.load(f'model/{CONTINUE_FROM_MODEL_FILENAME}', map_location=device)
-
-    # initial_weights_name = f'model/{experiment.get_name()}_initial_swin_weights.pth'
-    # initial_weights = model.swin.state_dict()
-    # torch.save(initial_weights, initial_weights_name)
-    # model.swin.load_state_dict(torch.load('model/' + 'slimy_siding_8354_initial_swin_weights.pth'))
 
     # Specify a loss function and an optimizer
     # metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
@@ -407,17 +292,14 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
-    if not CONTINUE_FROM_MODEL_FILENAME:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
-    else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
-    dataset_folder = 'my_dataset_big_from_deepglobe_plus_ethz'
+    dataset_folder = 'data'
     my_batch_size = 8
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -451,16 +333,10 @@ def main(args):
         image_bytes = f.read()
         experiment.log_asset_data(image_bytes, name='graph.png', overwrite=True)
 
-    if not CONTINUE_FROM_MODEL_FILENAME:
-        send_message(f"Starting new computation. {experiment.get_name()}")
-    else:
-        send_message(f"Starting new computation: continuing the model {CONTINUE_FROM_MODEL_FILENAME}.\n{experiment.get_name()}")
-    msg = "First epoch."
     at_epoch_loss_threshold_achieved = 0
     for epoch in range(num_epochs):
         if True:
             if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
-                send_message(msg)
                 # Evaluate on the validation set
                 print("Evaluating, plotting images.")
             model.eval()  # Put the model in evaluation mode
@@ -530,17 +406,8 @@ def main(args):
                         # Log to Comet
                         experiment.log_figure(f'preds/combined_{i}_epoch_{epoch}.png', plt)
 
-                        # Send an image
-                        buf = BytesIO()
-                        plt.savefig(buf, format='png')
-                        buf.seek(0)
-                        send_photo(buf, f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.25).float().view(-1).cpu().numpy(), average='binary'))  # binary case)
-                        buf.close()
-                        plt.close()
-
             if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
                 print(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
-                send_message(f'Avg F1 score: {sum_f1 / len(val_dataloader)}')
             experiment.log_metric("avg_f1_score", sum_f1 / len(val_dataloader), step=epoch)
             val_loss = sum_f1 / len(val_dataloader)
 
@@ -551,24 +418,13 @@ def main(args):
         model.current_epoch = epoch
         # scheduler.step()
         for i, (image, label) in enumerate(train_dataloader):
-            # resize = transforms.Resize((224, 224))
-            # image = resize(image)
-            # label = resize(label)
-
             image = image.to(device)
             label = label.to(device)
-            # Change sizes according to the output
-            # label = tensor_to_patches(image)
 
             # Forward pass
             outputs, intermediate = model(image)
-            # bce_loss = bce_loss_function(outputs, label)
-            # if epoch > model.switch_to_simultaneous_training_after_epochs and model.epoch_loss_threshold_achieved:
-            #     bce_loss = bce_loss_function_after_n_epochs(outputs, label)
-            # extra_loss = extra_loss_function(outputs, label)
-            # loss = bce_weight * bce_loss + extra_weight * extra_loss
             loss = loss_function(outputs, label)
-            # Log train loss to Comet.ml
+            # Log train loss to comet
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
             # Backward pass and optimization
