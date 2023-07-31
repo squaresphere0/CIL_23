@@ -44,51 +44,16 @@ import timm
 
 
 CONTINUE_FROM_MODEL_FILENAME = None
-# CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 0.25
-
-
-class FeatureAttention(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.query = nn.Conv2d(channels, channels, kernel_size=1)
-        self.key = nn.Conv2d(channels, channels, kernel_size=1)
-        self.value = nn.Conv2d(channels, channels, kernel_size=1)
-
-    def forward(self, x1, x2):
-        q = self.query(x1)   # Shape: [B, C, H, W]
-        k = self.key(x2)     # Shape: [B, C, H, W]
-        v = self.value(x2)   # Shape: [B, C, H, W]
-
-        # Reshape for dot product, shape: [B, C, H * W]
-        q = q.view(q.size(0), q.size(1), -1)
-        k = k.view(k.size(0), k.size(1), -1)
-        v = v.view(v.size(0), v.size(1), -1)
-
-        # Compute similarity scores, shape: [B, H * W, H * W]
-        similarity_scores = q.permute(0, 2, 1) @ k
-
-        # Apply softmax to compute attention weights
-        attention_weights = torch.softmax(similarity_scores, dim=-1)
-
-        # Compute weighted sum of v, shape: [B, C, H * W]
-        weighted_v = (attention_weights.permute(0, 2, 1) @ v.permute(0, 2, 1)).permute(0, 2, 1)
-
-        # Reshape to original shape [B, C, H, W]
-        weighted_v = weighted_v.view(q.size(0), q.size(1), x1.size(2), x1.size(3))
-
-        # Add weighted_v to x1
-        combined_features = weighted_v + x1
-
-        return combined_features
+# CONTINUE_FROM_MODEL_FILENAME = 'developing_cinema_6230_just_a_tranformer_epoch_210.pt'  # Set None for not continuing
+EPOCH_LOSS_THRESHOLD = 0.35
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 0
-        self.epoch_loss_threshold_achieved = True
+        self.switch_to_simultaneous_training_after_epochs = 20
+        self.epoch_loss_threshold_achieved = False
 
         self.current_epoch = 0
 
@@ -103,7 +68,7 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        num_channels = 1536
+        num_channels = 1024
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
         self.up0 = nn.Sequential(
@@ -121,92 +86,55 @@ class PixelSwinT(nn.Module):
             nn.BatchNorm2d(num_channels // 4 + num_channels // 8),
             nn.ReLU(),
         )
-        self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(num_channels // 4),
+        self.not_up3 = nn.Sequential(
+            nn.Conv2d(num_channels // 2, num_channels // 2, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(num_channels // 2),
             nn.ReLU(),
         )
         self.up4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 4 + num_channels // 8, out_channels=num_channels // 8 + num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 8 + num_channels // 16),
-            nn.ReLU(),
-        )
-        self.up5 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels // 8 + num_channels // 16, out_channels=num_channels // 16 + num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 16 + num_channels // 32),
-            nn.ReLU(),
-        )
-        # Dilated is with skip connection
-        self.dilated5_after_embed = nn.Sequential(
-            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, num_channels // 16 + num_channels // 32 + 3, kernel_size=3, stride=1, padding=2, dilation=2),
-            nn.BatchNorm2d(num_channels // 16 + num_channels // 32 + 3),
-            nn.ReLU(),
-            # Reduce dims as well
-            nn.Conv2d(num_channels // 16 + num_channels // 32 + 3, 1, kernel_size=3, stride=1, padding=2, dilation=2),
-            nn.BatchNorm2d(1),
-            nn.ReLU(),
-        )
-
-        self.upscale = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=num_channels, out_channels=num_channels // 2, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 2),
-            nn.ReLU(),
-
             nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
             nn.BatchNorm2d(num_channels // 4),
             nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 8),
-            nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 16),
-            nn.ReLU(),
-
-            nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
-            nn.BatchNorm2d(num_channels // 32),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
         )
+        self.up5 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=1, kernel_size=4, stride=2, padding=1, output_padding=0),
+            nn.BatchNorm2d(1),
+            nn.ReLU(),
+        )
+        # self.not_up6 = nn.Sequential(
+        #     nn.Conv2d(768, 768, kernel_size=3, stride=1, padding=2, dilation=2),
+        #     nn.BatchNorm2d(768),
+        #     nn.ReLU(),
+        # )
 
-        # Adding convolutional layers
-        self.down0_1 = self.conv_block(3, num_channels // 16)  # -> B, 96, 192, 192
-        self.down0_2 = self.conv_block(num_channels // 16, num_channels // 8)  # -> B, 192, 96, 96
-        self.conv_same_dims = self.conv_block_same_dims(num_channels // 8, num_channels // 8)
-        self.down1 = self.conv_block(num_channels // 8, num_channels // 4)  # -> B, 384, 48, 48
-        self.down2 = self.conv_block(num_channels // 4, num_channels // 2)  # -> B, 768, 24, 24
-        self.down3 = self.conv_block(num_channels // 2, num_channels)  # -> B, 1536, 12, 12
+        # self.upscale = nn.Sequential(
+        #     nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 2),
+        #     nn.ReLU(),
 
+        #     nn.ConvTranspose2d(in_channels=num_channels // 2, out_channels=num_channels // 4, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 4),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 4, out_channels=num_channels // 8, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 8),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 8, out_channels=num_channels // 16, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 16),
+        #     nn.ReLU(),
+
+        #     nn.ConvTranspose2d(in_channels=num_channels // 16, out_channels=num_channels // 32, kernel_size=4, stride=2, padding=1, output_padding=0),
+        #     nn.BatchNorm2d(num_channels // 32),
+        #     nn.ReLU(),
+
+        #     nn.Conv2d(in_channels=num_channels // 32, out_channels=1, kernel_size=1),  # Output layer, now with 1 channel
+        # )
         self.upsample = nn.Upsample(size=(output_resolution, output_resolution), mode='bilinear') #, align_corners=True)
         self.batchnorm = nn.Sequential(
             # nn.Conv2d(1536, 1, kernel_size=1),
             nn.BatchNorm2d(1),
             # nn.Sigmoid(),
-        )
-
-        self.feature_attention = FeatureAttention(channels=num_channels)
-        # combined_features = self.feature_attention(unet_features, swin_features)
-
-
-    def conv_block(self, in_channels, out_channels):
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=2), # Change stride to 2
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-    def conv_block_same_dims(self, in_channels, out_channels):
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
         )
 
     def forward(self, x):
@@ -216,37 +144,42 @@ class PixelSwinT(nn.Module):
 
         x = self.resize(x)
 
-        # UNet
-        # -> B, 3, 384, 384
-        down0_1 = self.down0_1(x)  # -> B, 96, 192, 192
-        down0_2 = self.down0_2(down0_1)  # -> B, 192, 96, 96
-        conv_same_dims = self.conv_same_dims(down0_2)
-        down1 = self.down1(conv_same_dims)  # -> B, 384, 48, 48
-        down2 = self.down2(down1)  # -> B, 768, 24, 24
-        down3 = self.down3(down2)  # -> B, 1536, 12, 12
-        unet_features = down3
-        # Swin2
-        swin_features = self.swin(x).permute(0, 3, 1, 2)
+        embed = self.swin.patch_embed(x)
+        stage0 = self.swin.layers[0](embed)
+        stage1 = self.swin.layers[1](stage0)
+        stage2 = self.swin.layers[2](stage1)
+        stage3 = self.swin.layers[3](stage2)
 
-        combined = self.feature_attention(unet_features, swin_features)
-
-        # Decoder
-        up0 = self.up0(combined)
-        up1 = self.up1(torch.cat([up0, down2], dim=1))
-        up2 = self.up2(torch.cat([up1, down1], dim=1))
-        conv3 = self.conv3(torch.cat([up2, conv_same_dims], dim=1))
-        up4 = self.up4(torch.cat([conv3, down0_2], dim=1))
+        up0 = self.up0(stage3.permute(0, 3, 1, 2))        
+        up1 = self.up1(torch.cat([up0, stage2.permute(0, 3, 1, 2)], dim=1))
+        up2 = self.up2(torch.cat([up1, stage1.permute(0, 3, 1, 2)], dim=1))
+        not_up3 = self.not_up3(torch.cat([up2, stage0.permute(0, 3, 1, 2)], dim=1))
+        up4 = self.up4(not_up3)
         up5 = self.up5(up4)
-        dilated5_after_embed = self.dilated5_after_embed(torch.cat([up5, x], dim=1))
 
-        x = dilated5_after_embed
-        x = self.upsample(x)  # Upsample to the original image size
+
+        swin_x = self.swin(x)
+        swin_x = swin_x.permute(0, 3, 1, 2)  # permute the dimensions to bring it to (B, Channels, H, W) format
+        intermediate = self.reduce_channels(swin_x)
+        intermediate = self.upsample(intermediate)
+        # intermediate = self.classifier(intermediate)
+        # x = self.reduce_dim(x)  # reduce dimensionality to 1
+        # print(x.shape)
+        # x = F.interpolate(x, size=(224, 224))
+        # print("SHape after swin:", x.shape)
+
+        if not self.epoch_loss_threshold_achieved:
+            x = swin_x
+            x = self.upsample(x)
+            x = self.reduce_channels(x)
+            x = self.batchnorm(x)
+            return x, intermediate
+
+        x = self.upsample(up5)  # Upsample to the original image size
         x = self.batchnorm(x)
-
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
-
-        intermediate = self.reduce_channels(combined)
+        # x = self.classifier(x)  # Classify each pixel
         return x, intermediate
 
 
@@ -468,12 +401,7 @@ def main(args):
     # bce_weight = 1  # This determines how much the BCE loss contributes to the total loss
     # extra_weight = 1 - bce_weight  # This determines how much the IoU loss contributes to the total loss        optimizer = torch.optim.Adam(model.parameters())
     # loss_function = segmentation_models_pytorch.losses.JaccardLoss(mode='binary')
-    loss_function = [
-        segmentation_models_pytorch.losses.DiceLoss(mode='binary'),
-        # nn.BCEWithLogitsLoss(),
-    ]
-    loss_weight = [1.0 for i in range(len(loss_function))]
-
+    loss_function = segmentation_models_pytorch.losses.DiceLoss(mode='binary')
     # loss_function = segmentation_models_pytorch.losses.TverskyLoss(mode='binary', alpha=0.2, beta=0.8)
     # loss_function = segmentation_models_pytorch.losses.FocalLoss(mode='binary', alpha=None, gamma=5.0)
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
@@ -489,14 +417,14 @@ def main(args):
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', factor=0.1, patience=5)
 
-    dataset_folder = 'data'
-    my_batch_size = 4
+    dataset_folder = 'my_dataset_big_from_deepglobe_plus_ethz'
+    my_batch_size = 8
     train_dataset = ImageDataset(f'{dataset_folder}/training', 'cuda' if torch.cuda.is_available() else 'cpu')
     val_dataset = ImageDataset(f'{dataset_folder}/validation', 'cuda' if torch.cuda.is_available() else 'cpu')
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=0)
 
-    num_epochs = 100
+    num_epochs = 300
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
@@ -510,15 +438,14 @@ def main(args):
         # 'bce_loss_pos_weight': bce_loss_pos_weight,
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
         'dataset': dataset_folder,
-        'dataset_training_len': len(train_dataloader) * my_batch_size,
+        'dataset_training_len': len(train_dataloader),
         'continue_from_model_filename': CONTINUE_FROM_MODEL_FILENAME,
     }
     experiment.log_parameters(hyper_params)
     experiment.set_model_graph(str(model))
 
     # Visualize the model
-    model_graph = torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
-    model_graph_svg = model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
+    torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
     cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
     with open('temp_graph.png', 'rb') as f:
         image_bytes = f.read()
@@ -640,9 +567,7 @@ def main(args):
             #     bce_loss = bce_loss_function_after_n_epochs(outputs, label)
             # extra_loss = extra_loss_function(outputs, label)
             # loss = bce_weight * bce_loss + extra_weight * extra_loss
-            # loss = loss_function(outputs, label)
-            # Weighing all loss functions and summing them
-            loss = sum([loss_function[i](outputs, label)*loss_weight[i] for i in range(len(loss_function))])
+            loss = loss_function(outputs, label)
             # Log train loss to Comet.ml
             experiment.log_metric("train_loss", loss.item(), step=epoch * len(train_dataloader) + i)
 
