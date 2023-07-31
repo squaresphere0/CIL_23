@@ -23,6 +23,17 @@ pip install segmentation_models_pytorch
 
 ```
 
+### The Bash scripts
+
+The bash scripts in the "jobs" are used to train models on euler.
+The scripts are expected to be run from within the "jobs" directory.
+I.e.:
+```
+pwd  # .../jobs
+sbatch train_transformer.sh
+```
+
+
 ## Using this Repo
 
 ### Running the Code
@@ -31,6 +42,15 @@ The following list explains roughly the use of each source code file and whoch o
 
 |Filename | description |
 |---------|-------------|
+|pixel_cnn.py | Contains our implementation of a conditional PixelCNN including the training loop.|
+|main.py | Used to setup training sessions of our PixelCNN. All relevant hyperparameters are exposed either at the initialization of the PixelCNN or at the method call to train it. Saves any trained model into the model directory.|
+|pixelcnn_create_mask.py | Contains the code to load a trained PixelCNN model and generate predictions for the ethz test set. These are saved as images into a directory by the same name as the model inside of the test directory. |
+|playground.py | Contains some utility functions used during the project to asses PixelCNN models.|
+|---|---|
+|transformer.py| Used for training swin with skip connections. |
+|generate_more_data_from_deepglobe.py| This code is used to generate data from the DeepGlobe dataset. It crops images of 1024x1024 into four images of 400x400. |
+|src/transformer_create_mask.py| This code is used to perform inference with the transformer model. |
+|---|---|
 |u_net.py | Contains the CIL implementation of a U-NET.|
 |patch_cnn.py| Contains the CIL implementation of patch CNN.|
 |main_baselines.py | Runnable script to train either of the baselines. Expects either `--baseline=patch_cnn` or `--baseline=unet` as a argument.|
@@ -38,11 +58,7 @@ The following list explains roughly the use of each source code file and whoch o
 |utils.py | Some utility code for the baselines. |
 |mask_to_submission.py | As provided for the project. |
 |submission_to_mask.py | As provided for the project. |
-|pixel_cnn.py | Contains our implementation of a conditional PixelCNN including the training loop.|
 |dataloader.py | Contains a lazydataloader implementation used for the training of our PixelCNN. |
-|main.py | Used to setup training sessions of our PixelCNN. All relevant hyperparameters are exposed either at the initialization of the PixelCNN or at the method call to train it. Saves any trained model into the model directory.|
-|pixelcnn_create_mask.py | Contains the code to load a trained PixelCNN model and generate predictions for the ethz test set. These are saved as images into a directory by the same name as the model inside of the test directory. |
-|playground.py | Contains some utility functions used during the project to asses PixelCNN models.|
 
 All python scripts expect to called from the root directory of the repo. Otherwise the relative paths used will not checkout to the correct locations.
 
@@ -71,23 +87,4 @@ We have removed the subdirectories of the datasets holding the images for the re
 This means the original Dataset Folders can be used as long as the csv files are copied over.
 
 The Deepglobe dataset can be sourced [here](https://www.kaggle.com/datasets/balraj98/deepglobe-road-extraction-dataset).
-
-### The Bash scripts
-
-In the jobs directory bash scripts exist to trin some of the model on euler.
-
-To pred the evironment this **should be done once** before running any scripts, in the root directory of the repo.
-Otherwise just remove the "venv" folder with `rm -rf venv` and start over.
-```
-module load gcc/6.3.0 python_gpu/3.8.5 eth_proxy
-python -m venv venv --system-site-packages
-export SETUPTOOLS_USE_DISTUTILS=stdlib
-pip install comet_ml
-pip install torchview
-pip install cairosvg
-
-```
-
-The scripts expect to be queued from within the jobs directory.
-
 
