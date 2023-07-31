@@ -1,6 +1,10 @@
 # Our own custom ignores
 *~
-Datasets/
+Datasets/Ottawa-Dataset
+Datasets/massRD
+Datasets/DeepGlobe/**/*.jpg
+Datasets/DeepGlobe/**/*.png
+Datasets/ethz-cil-road-segmentation-2023/**/*.png
 tensorboard/
 ethz-cil-road-segmentation-2023.zip
 .DS_Store
