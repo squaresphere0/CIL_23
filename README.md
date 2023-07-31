@@ -91,13 +91,11 @@ The model folder can be empty but **must** exist because it's where the script w
 
 ### The Datasets
 
-We have removed the subdirectories of the datasets holding the images for the repo. Our only addition to the datasets are the metadata.csv files used for loading the data by our code.
+We have removed the images from the repo. We added the metadata.csv files used for loading the data by our code. This means the original Dataset Folders can be used as long as the csv files are copied over. (We also provided the `Datasets/data/` folder which is a legacy requirement of our `src/main_transformer.py` script.)
 
-(!) The `src/main_transformer.py` expects to have a Datasets/data/ folder with the provided above structure (for the most of our experiments with transformer, we used the first 11 pictures for validation, and the others for training from the original Kaggle dataset).
+(!) The `src/main_transformer.py` uses the `Datasets/data/` folder with the provided above structure (for the most of our experiments with transformer, we used the first 11 pictures for validation, and the others for training from the original Kaggle dataset).
 
-We also used the DeepGlobe dataset with the `src/generate_more_data_from_deepglobe.py` script, the list of files is provided in `Datasets/data/my_dataset_from_deepglobe_plus_ethz.txt`.
-
-This means the original Dataset Folders can be used as long as the csv files are copied over.
+For our best performing model we used the DeepGlobe dataset with the `src/generate_more_data_from_deepglobe.py` script, the list of files is provided in `Datasets/data/my_dataset_from_deepglobe_plus_ethz.txt`.
 
 The Deepglobe dataset can be sourced [here](https://www.kaggle.com/datasets/balraj98/deepglobe-road-extraction-dataset).
 
