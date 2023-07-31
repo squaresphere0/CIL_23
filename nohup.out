@@ -1,0 +1,184 @@
+Traceback (most recent call last):
+  File "/cluster/scratch/pkoludarov/CIL_23/src/transformer_create_mask.py", line 19, in <module>
+    import timm
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/__init__.py", line 3, in <module>
+    from .models import create_model, list_models, list_pretrained, is_model, list_modules, model_entrypoint, \
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/models/__init__.py", line 1, in <module>
+    from .beit import *
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/models/beit.py", line 49, in <module>
+    from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/data/__init__.py", line 5, in <module>
+    from .dataset import ImageDataset, IterableImageDataset, AugMixDataset
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/data/dataset.py", line 13, in <module>
+    from .readers import create_reader
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/data/readers/__init__.py", line 1, in <module>
+    from .reader_factory import create_reader
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/data/readers/reader_factory.py", line 3, in <module>
+    from .reader_image_folder import ReaderImageFolder
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/data/readers/reader_image_folder.py", line 11, in <module>
+    from timm.utils.misc import natural_key
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/utils/__init__.py", line 15, in <module>
+    from .summary import update_summary, get_outdir
+  File "/cluster/scratch/pkoludarov/CIL_23/venv/lib64/python3.9/site-packages/timm/utils/summary.py", line 9, in <module>
+    import wandb
+  File "/cluster/apps/nss/gcc-8.2.0/python/3.9.9/x86_64/lib64/python3.9/site-packages/wandb/__init__.py", line 198, in <module>
+    if wandb_sdk.lib.ipython.in_jupyter():
+  File "/cluster/apps/nss/gcc-8.2.0/python/3.9.9/x86_64/lib64/python3.9/site-packages/wandb/sdk/lib/ipython.py", line 38, in in_jupyter
+    return _get_python_type() == "jupyter"
+  File "/cluster/apps/nss/gcc-8.2.0/python/3.9.9/x86_64/lib64/python3.9/site-packages/wandb/sdk/lib/ipython.py", line 24, in _get_python_type
+    from IPython import get_ipython  # type: ignore
+  File "/cluster/apps/nss/gcc-8.2.0/python/3.9.9/x86_64/lib64/python3.9/site-packages/IPython/__init__.py", line 61, in <module>
+    from .utils.frame import extract_module_locals
+  File "<frozen importlib._bootstrap>", line 1007, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 986, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 680, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 846, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 978, in get_code
+  File "<frozen importlib._bootstrap_external>", line 649, in _compile_bytecode
+KeyboardInterrupt
+/cluster/apps/nss/gcc-8.2.0/python/3.9.9/x86_64/lib64/python3.9/site-packages/torch/nn/functional.py:3631: UserWarning: Default upsampling behavior when mode=bicubic is changed to align_corners=False since 0.4.0. Please specify align_corners=True if the old behavior is desired. See the documentation of nn.Upsample for details.
+  warnings.warn(
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])
+torch.Size([1, 3, 384, 384])

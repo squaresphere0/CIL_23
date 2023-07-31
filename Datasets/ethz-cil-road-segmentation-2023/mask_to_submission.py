@@ -8,15 +8,12 @@ import PIL
 
 from absl import app, flags
 
-PRED_FOLDER = 'pred_precious_panda_1942_just_a_tranformer_epoch_80'
-MODEL_NAME = PRED_FOLDER.split('_', maxsplit=1)[-1]
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
-    "submission_filename", "Datasets/submissions/finetuned_2epochs_submission.csv", "The output csv for the submission.")
+    "submission_filename", "dummy_submission.csv", "The output csv for the submission.")
 flags.DEFINE_string(
-    "base_dir", "test/pred_finetuned_two_epochs", "The directory with the predicted masks.")
+    "base_dir", "training/groundtruth", "The directory with the predicted masks.")
 
 foreground_threshold = 0.25 # percentage of pixels of val 255 required to assign a foreground label to a patch
 
@@ -31,10 +28,9 @@ def patch_to_label(patch):
 
 
 def mask_to_submission_strings(image_filename, mask_dir=None):
-    """Reads a single image and outputs the strings that should go into the
-    submission file"""
+    """Reads a single image and outputs the strings that should go into the submission file"""
     img_number = int(re.search(r"\d+", image_filename).group(0))
-    im = PIL.Image.open("Datasets/ethz-cil-road-segmentation-2023/" + image_filename)
+    im = PIL.Image.open(image_filename)
     im_arr = np.asarray(im)
     if len(im_arr.shape) > 2:
         # Convert to grayscale.
@@ -68,7 +64,7 @@ def masks_to_submission(submission_filename, mask_dir, *image_filenames):
             f.writelines('{}\n'.format(s) for s in mask_to_submission_strings(fn, mask_dir=mask_dir))
 
 def main(_):
-    image_filenames = [os.path.join(FLAGS.base_dir, name) for name in os.listdir("Datasets/ethz-cil-road-segmentation-2023/" + FLAGS.base_dir)]
+    image_filenames = [os.path.join(FLAGS.base_dir, name) for name in os.listdir(FLAGS.base_dir)]
     masks_to_submission(FLAGS.submission_filename, "", *image_filenames)
 
 if __name__ == '__main__':
