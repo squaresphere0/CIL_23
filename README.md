@@ -27,11 +27,12 @@ pip install segmentation_models_pytorch
 
 The bash scripts in the "jobs" are used to train models on euler.
 The scripts are expected to be run from within the "jobs" directory.
-I.e.:
+
+I. e. `pwd` outputs `.../jobs` then run:
 ```
-pwd  # .../jobs
 sbatch train_transformer.sh
 ```
+For the transformer model it is also possible to run inference with the "inference_create_masks_parallel.sh" script (but the name of the model from "model/" folder should be changed accordingly in the script).
 
 
 ## Using this Repo
