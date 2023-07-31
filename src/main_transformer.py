@@ -328,7 +328,7 @@ def main(args):
 
     at_epoch_loss_threshold_achieved = 0
     for epoch in range(num_epochs):
-        if True:
+        if True:  # if-statement for model validation. Each 10 epochs the model plots the outputs to comet.
             if epoch % log_custom_info_at_each_nth_epoch == 0 or epoch == num_epochs - 1:
                 # Evaluate on the validation set
                 print("Evaluating, plotting images.")
@@ -342,8 +342,7 @@ def main(args):
 
                     outputs, intermediate = model(image)
 
-                    # Apply a threshold of 0.5: above -> 1, below -> 0
-                    preds = outputs # (outputs > 0.15).float()
+                    preds = outputs
                     inter = intermediate
 
                     sum_f1 += f1_score(label.view(-1).cpu().numpy(), (outputs >= 0.5).float().view(-1).cpu().numpy(), average='binary')  # binary case
@@ -431,23 +430,24 @@ def main(args):
         experiment.log_metric("learning_rate", optimizer.param_groups[0]['lr'], step=epoch)
         # scheduler.step(val_loss)
         running_loss = 0.0
+
         # # Log gradients.
         # for tag, value in model.named_parameters():
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
 
+        # Save the model .pt file when the threshold achieved.
         model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
         if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
+        # Save the model .pt file each 10 epochs.
         if epoch % 10 == 0 and epoch != 0:
             torch.save(model, f'model/{experiment.get_name()}_just_a_tranformer_epoch_{epoch}.pt')
 
+    # Save the final model.
     model_name = f'model/{experiment.get_name()}_just_a_tranformer_epoch_{num_epochs}.pt'
     torch.save(model, model_name)
-    # experiment.log_asset(model_name)
-    # log_model(experiment, model, model_name)
-    # experiment.log_asset(initial_weights_name)
 
 
 if __name__ == '__main__':
