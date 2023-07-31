@@ -84,9 +84,6 @@ The python scripts expect the following directory layout.
 └─ jobs/
 ```
 
-```
-
-```
 
 All python scripts expect to be executed from the root directory for correctly applying their paths.
 
@@ -95,7 +92,10 @@ The model folder can be empty but **must** exist because it's where the script w
 ### The Datasets
 
 We have removed the subdirectories of the datasets holding the images for the repo. Our only addition to the datasets are the metadata.csv files used for loading the data by our code.
-(!) The `src/main_transformer.py` expects to have a Datasets/data/ folder with the provided above structure (for the most of our experiments with transformer, we used the first 11 pictures for validation, and the others for training from the original Kaggle dataset). We also used the DeepGlobe dataset with the `src/generate_more_data_from_deepglobe.py` script, the list of files is provided in "Datasets/data/my_dataset_from_deepglobe_plus_ethz.txt".
+
+(!) The `src/main_transformer.py` expects to have a Datasets/data/ folder with the provided above structure (for the most of our experiments with transformer, we used the first 11 pictures for validation, and the others for training from the original Kaggle dataset).
+
+We also used the DeepGlobe dataset with the `src/generate_more_data_from_deepglobe.py` script, the list of files is provided in "Datasets/data/my_dataset_from_deepglobe_plus_ethz.txt".
 
 This means the original Dataset Folders can be used as long as the csv files are copied over.
 
