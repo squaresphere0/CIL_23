@@ -268,14 +268,7 @@ def main(args):
     )
 
     # Create the model and move it to the GPU if available
-    if not CONTINUE_FROM_MODEL_FILENAME:
-        model = PixelSwinT().to(device)
-        for param in model.parameters():
-            # param.requires_grad = True
-            if not param.requires_grad:
-                print(f'param, requires_grad: :{param}, {param.requires_grad}')
-    else:
-        model = torch.load(f'model/{CONTINUE_FROM_MODEL_FILENAME}', map_location=device)
+    model = PixelSwinT().to(device)
 
     # Specify a loss function and an optimizer
     # metric_fns = {'acc': accuracy_fn, 'patch_acc': patch_accuracy_fn}
@@ -321,13 +314,13 @@ def main(args):
         'switch_to_simultaneous_training_after_epochs': model.switch_to_simultaneous_training_after_epochs,
         'dataset': dataset_folder,
         'dataset_training_len': len(train_dataloader),
-        'continue_from_model_filename': CONTINUE_FROM_MODEL_FILENAME,
     }
     experiment.log_parameters(hyper_params)
     experiment.set_model_graph(str(model))
 
     # Visualize the model
-    torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
+    model_graph = torchview.draw_graph(model, input_size=(my_batch_size, 3, 400, 400), depth=1)#, expand_nested=True)
+    model_graph.visual_graph.render(filename='temp_graph', format='svg', cleanup=True)
     cairosvg.svg2png(url='temp_graph.svg', write_to='temp_graph.png')
     with open('temp_graph.png', 'rb') as f:
         image_bytes = f.read()
