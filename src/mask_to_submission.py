@@ -8,9 +8,6 @@ import PIL
 
 from absl import app, flags
 
-PRED_FOLDER = 'pred_precious_panda_1942_just_a_tranformer_epoch_80'
-MODEL_NAME = PRED_FOLDER.split('_', maxsplit=1)[-1]
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
