@@ -1,5 +1,28 @@
 # PixelCNN for Road Segmentation
 
+## Initial environment Setup on Euler
+
+Use the following commands in the project **root folder** to setup the environment. This **should be done once** before running any scripts.
+Otherwise remove the "venv" folder with `rm -rf venv` and start over.
+```
+export SETUPTOOLS_USE_DISTUTILS=stdlib
+module load gcc/8.2.0 python_gpu/3.11.2 graphviz eth_proxy
+python -m venv venv --system-site-packages
+source venv/bin/activate
+
+
+pip install timm
+pip install huggingface_hub -U
+
+pip install comet_ml
+pip install torchview
+pip install graphviz
+pip install cairosvg
+
+pip install segmentation_models_pytorch
+
+```
+
 ## Using this Repo
 
 ### Running the Code
