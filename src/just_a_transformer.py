@@ -45,35 +45,50 @@ import timm
 
 CONTINUE_FROM_MODEL_FILENAME = None
 # CONTINUE_FROM_MODEL_FILENAME = 'sharp_yak_5025_just_a_tranformer_epoch_loss_threshold_achieved_epoch_20.pt'  # Set None for not continuing
-EPOCH_LOSS_THRESHOLD = 0.35
+EPOCH_LOSS_THRESHOLD = 0.25
+
 
 class FeatureAttention(nn.Module):
-    def __init__(self, channels1, channels2):
+    def __init__(self, channels):
         super().__init__()
-        self.query = nn.Conv2d(channels1, channels1, kernel_size=1)
-        self.key = nn.Conv2d(channels2, channels2, kernel_size=1)
-        self.value = nn.Conv2d(channels2, channels2, kernel_size=1)
+        self.query = nn.Conv2d(channels, channels, kernel_size=1)
+        self.key = nn.Conv2d(channels, channels, kernel_size=1)
+        self.value = nn.Conv2d(channels, channels, kernel_size=1)
 
     def forward(self, x1, x2):
-        q = self.query(x1)   # Shape: [B, C1, H, W]
-        k = self.key(x2)     # Shape: [B, C2, H, W]
-        v = self.value(x2)   # Shape: [B, C2, H, W]
+        q = self.query(x1)   # Shape: [B, C, H, W]
+        k = self.key(x2)     # Shape: [B, C, H, W]
+        v = self.value(x2)   # Shape: [B, C, H, W]
 
-        # Compute attention weights, shape: [B, C, H, W]
-        attention_weights = torch.softmax(q * k, dim=1)
+        # Reshape for dot product, shape: [B, C, H * W]
+        q = q.view(q.size(0), q.size(1), -1)
+        k = k.view(k.size(0), k.size(1), -1)
+        v = v.view(v.size(0), v.size(1), -1)
 
-        # Apply attention weights to v, and add the result to x1
-        combined_features = (attention_weights * v) + x1
+        # Compute similarity scores, shape: [B, H * W, H * W]
+        similarity_scores = q.permute(0, 2, 1) @ k
+
+        # Apply softmax to compute attention weights
+        attention_weights = torch.softmax(similarity_scores, dim=-1)
+
+        # Compute weighted sum of v, shape: [B, C, H * W]
+        weighted_v = (attention_weights.permute(0, 2, 1) @ v.permute(0, 2, 1)).permute(0, 2, 1)
+
+        # Reshape to original shape [B, C, H, W]
+        weighted_v = weighted_v.view(q.size(0), q.size(1), x1.size(2), x1.size(3))
+
+        # Add weighted_v to x1
+        combined_features = weighted_v + x1
 
         return combined_features
 
 
 class PixelSwinT(nn.Module):
-    def __init__(self, swin_model_name='swinv2_base_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
+    def __init__(self, swin_model_name='swinv2_large_window12to24_192to384.ms_in22k_ft_in1k', input_resolution=384, output_resolution=400):
         super().__init__()
 
-        self.switch_to_simultaneous_training_after_epochs = 20
-        self.epoch_loss_threshold_achieved = False
+        self.switch_to_simultaneous_training_after_epochs = 0
+        self.epoch_loss_threshold_achieved = True
 
         self.current_epoch = 0
 
@@ -88,7 +103,7 @@ class PixelSwinT(nn.Module):
 
         # self.dropout = nn.Dropout(p=0.5)
 
-        num_channels = 1024
+        num_channels = 1536
         self.reduce_channels = nn.Conv2d(num_channels, 1, kernel_size=1)
 
         self.up0 = nn.Sequential(
@@ -171,7 +186,7 @@ class PixelSwinT(nn.Module):
             # nn.Sigmoid(),
         )
 
-        self.feature_attention = FeatureAttention(channels1=num_channels, channels2=num_channels)
+        self.feature_attention = FeatureAttention(channels=num_channels)
         # combined_features = self.feature_attention(unet_features, swin_features)
 
 
@@ -200,19 +215,6 @@ class PixelSwinT(nn.Module):
 
 
         x = self.resize(x)
-
-        # Train Swin only for some time.
-        if not self.epoch_loss_threshold_achieved:
-            swin_x = self.swin(x).permute(0, 3, 1, 2)
-            intermediate = self.reduce_channels(swin_x)
-            intermediate = self.upsample(intermediate)
-
-            x = swin_x
-            x = self.upsample(x)
-            x = self.reduce_channels(x)
-            x = self.batchnorm(x)
-            return x, intermediate
-
 
         # UNet
         # -> B, 3, 384, 384
@@ -244,9 +246,7 @@ class PixelSwinT(nn.Module):
         if not self.training:  # If it's in eval mode
             x = torch.sigmoid(x)
 
-        intermediate = self.reduce_channels(unet_features)
-        intermediate = self.upsample(intermediate)
-
+        intermediate = self.reduce_channels(combined)
         return x, intermediate
 
 
@@ -302,8 +302,8 @@ class ImageDataset(torch.utils.data.Dataset):
         self.n_samples = len(self.x)
 
     def _preprocess(self, x, y, angle=0):
-        # transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        # x = transform(x)
+        transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        x = transform(x)
         if not self.preprocessing or not self.is_train:
             return x, y
         # to keep things simple we will not apply transformations to each sample,
@@ -447,10 +447,10 @@ def main(args):
     # Create the model and move it to the GPU if available
     if not CONTINUE_FROM_MODEL_FILENAME:
         model = PixelSwinT().to(device)
-        # for param in model.parameters():
-        #     # param.requires_grad = True
-        #     if not param.requires_grad:
-        #         print(f'param, requires_grad: :{param}, {param.requires_grad}')
+        for param in model.parameters():
+            # param.requires_grad = True
+            if not param.requires_grad:
+                print(f'param, requires_grad: :{param}, {param.requires_grad}')
     else:
         model = torch.load(f'model/{CONTINUE_FROM_MODEL_FILENAME}', map_location=device)
 
@@ -479,17 +479,10 @@ def main(args):
     # loss_function = segmentation_models_pytorch.losses.LovaszLoss(mode='binary')
 
     # optimizer = torch.optim.Adam(model.parameters())
-    # if not CONTINUE_FROM_MODEL_FILENAME:
-    #     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
-    # else:
-    #     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
-    swin_params = model.swin.parameters()
-    other_params = [p for p in model.parameters() if p not in swin_params]
-    optimizer = torch.optim.SGD([
-        {'params': swin_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Initial learning rate for swin
-        {'params': other_params, 'lr': 0.003, 'momentum': 0.9, 'weight_decay': 0.0001,},  # Default learning rate for other parameters
-    ])
-
+    if not CONTINUE_FROM_MODEL_FILENAME:
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9, weight_decay=0.0001)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
     # rest_of_model_params = [p for n, p in model.named_parameters() if 'upscale' not in n]
     # optimizer_rest = torch.optim.Adam(rest_of_model_params)
     # optimizer_upscale = torch.optim.Adam(model.upscale.parameters(), weight_decay=1e-5)
@@ -503,7 +496,7 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=my_batch_size, shuffle=True, num_workers=0)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=0)
 
-    num_epochs = 400
+    num_epochs = 100
 
     hyper_params = {
         # "learning_rate": optimizer.param_groups[0]['lr'],
@@ -689,13 +682,9 @@ def main(args):
         # for tag, value in model.named_parameters():
         #     if value.grad is not None:
         #         experiment.log_histogram_3d(value.grad.cpu().numpy(), name=tag+"_grad")
-        if epoch == 200 - 1:
-            optimizer.param_groups[0]['lr'] = 0.00003
-            optimizer.param_groups[1]['lr'] = 0.00003
 
         model_name_epoch_loss_threshold_achieved = f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_{at_epoch_loss_threshold_achieved}.pt'
         if model.epoch_loss_threshold_achieved and not glob(f'model/{experiment.get_name()}_just_a_tranformer_epoch_loss_threshold_achieved_epoch_*.pt'):
-            optimizer.param_groups[0]['lr'] = 0.00003
             torch.save(model, model_name_epoch_loss_threshold_achieved)
             experiment.log_asset(model_name_epoch_loss_threshold_achieved)
         if epoch % 10 == 0 and epoch != 0:
